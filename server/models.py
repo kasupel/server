@@ -98,6 +98,12 @@ class TurnCounter:
         self.game.save()
 
 
+class Mode(enum.Enum):
+    """An enum for a gamemode."""
+
+    CHESS = enum.auto()
+
+
 class Winner(enum.Enum):
     """An enum for the winner of a game."""
 
@@ -349,7 +355,7 @@ class Game(BaseModel):
     invited = pw.ForeignKeyField(model=User, backref='invites', null=True)
     current_turn = EnumField(Side, default=Side.HOME)
     _turn_number = pw.SmallIntegerField(default=1, column_name='turn_number')
-    mode = pw.SmallIntegerField(default=1)         # only valid value for now
+    mode = EnumField(Mode)
     last_kill_or_pawn_move = pw.SmallIntegerField(default=1)
 
     # initial timer value for each player
@@ -416,7 +422,7 @@ class Game(BaseModel):
         """Get a dict representation of this game."""
         return {
             'id': self.id,
-            'mode': self.mode,
+            'mode': self.mode.value,
             'host': self.host.to_json() if self.host else None,
             'away': self.away.to_json() if self.away else None,
             'invited': self.invited.to_json() if self.invited else None,
