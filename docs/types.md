@@ -24,10 +24,6 @@ Refers to the JSON singleton `null`.
 
 Refers to the JSON boolean type, either `true` or `false`.
 
-### `optional` (some other type)
-
-A value which may either be `null` or some other specified type.
-
 ## Objects
 
 ### User
@@ -36,44 +32,44 @@ A JSON object representing a user account. These may or may not include an `emai
 
 Fields:
 
-- `id` (integer)
-- `username` (string)
-- `elo` (integer)
-- `avatar_url` (currently `null`, until media is implemented)
-- `created_at` (date)
-- `email` (string, may not be included)
+- `id` ([integer](#integer))
+- `username` ([string](#string))
+- `elo` ([integer](#integer))
+- `avatar_url` (currently [`null`](#null), until media is implemented)
+- `created_at` ([date](#date))
+- `email` ([string](#string), may not be included)
 
 ### Game
 
 A JSON object representing a game. These may either have:
 
-- *Referenced* users, where the `host`, `away` and `invited` fields are integers referring to user IDs (or `null`).
-- *Included* users, where the `host`, `away` and `invited` fields are `User` objects (not including emails), or `null`.
+- *Referenced* users, where the `host`, `away` and `invited` fields are [integers](#integer) referring to user IDs (or [`null`](#null)).
+- *Included* users, where the `host`, `away` and `invited` fields are [`User` objects](#user) (not including emails), or [`null`](#null).
 
 See the endpoint-specific documentation to check which.
 
 Fields:
 
-- `id` (integer)
-- `mode` (optional `Gamemode` enum)
-- `host` (optional `User` object or integer)
-- `away` (optional `User` object or integer)
-- `invited` (optional `User` object or integer)
-- `current_turn` (`Side` enum)
-- `turn_number` (integer)
-- `main_thinking_time` (timedelta)
-- `fixed_extra_time` (timedelta)
-- `time_increment_per_turn` (timedelta)
-- `home_time` (timedelta, the time left on the home clock)
-- `away_time` (timedelta, the time left on the away clock)
-- `home_offering_draw` (boolean)
-- `away_offering_draw` (boolean)
-- `winner` (`Winner` enum)
-- `conclusion_type` (`Conclusion` enum)
-- `opened_at` (date)
-- `started_at` (optional date)
-- `last_turn` (optional date)
-- `ended_at` (optional date)
+- `id` ([integer](#integer))
+- `mode` ([optional](#optional-some-other-type) [`Gamemode` enum](#gamemode))
+- `host` ([optional](#optional-some-other-type) [`User` object](#user) or [integer](#integer))
+- `away` ([optional](#optional-some-other-type) [`User` object](#user) or [integer](#integer))
+- `invited` ([optional](#optional-some-other-type) [`User` object](#user) or [integer](#integer))
+- `current_turn` ([`Side` enum](#side))
+- `turn_number` ([integer](#integer))
+- `main_thinking_time` ([timedelta](#timedelta))
+- `fixed_extra_time` ([timedelta](#timedelta))
+- `time_increment_per_turn` ([timedelta](#timedelta))
+- `home_time` ([timedelta](#timedelta), the time left on the home clock)
+- `away_time` ([timedelta](#timedelta), the time left on the away clock)
+- `home_offering_draw` ([boolean](#boolean))
+- `away_offering_draw` ([boolean](#boolean))
+- `winner` ([`Winner` enum](#winner))
+- `conclusion_type` ([`Conclusion` enum](#conclusion))
+- `opened_at` ([date](#date))
+- `started_at` ([optional](#optional-some-other-type) [date](#date))
+- `last_turn` ([optional](#optional-some-other-type) [date](#date))
+- `ended_at` ([optional](#optional-some-other-type) [date](#date))
 
 ### Move
 
@@ -83,17 +79,17 @@ The contents of this object depends on the game mode.
 
 Chess:
 
-- `start_rank` (integer, 0-7)
-- `start_file` (integer, 0-7)
-- `end_rank` (integer, 0-7)
-- `end_file` (integer, 0-7)
-- `promotion` (optional `Piece` enum)
+- `start_rank` ([integer](#integer), 0-7)
+- `start_file` ([integer](#integer), 0-7)
+- `end_rank` ([integer](#integer), 0-7)
+- `end_file` ([integer](#integer), 0-7)
+- `promotion` ([optional](#optional-some-other-type) [`Piece` enum](#piece))
 
 ### Board
 
 An object representing the visual state of a board.
 
-The attribute names in a board object will be of the form `<rank>,<file>`. The values will be lists containing two elements: the first, a `Piece` enum, the second a `Side` enum.
+The attribute names in a board object will be of the form `<rank>,<file>`. The values will be [lists](#list-of-some-other-type) containing two elements: the first, a [`Piece` enum](#piece), the second a [`Side` enum](#side).
 
 Example:
 
@@ -113,7 +109,7 @@ Squares with no piece on them will not be included.
 
 ## Enums
 
-Enums are expressed as integers, which may be any of a set specified below, and each have a specific meaning.
+Enums are expressed as [integers](#integer), which may be any of a set specified below, and each have a specific meaning.
 
 ### GameMode
 
@@ -185,8 +181,16 @@ Values:
 
 ## date
 
-An integer representing the number of seconds since the epoch, midnight on January 1 1970.
+An [integer](#integer) representing the number of seconds since the epoch, midnight on January 1 1970.
 
 ## timedelta
 
-An integer representing a number of seconds.
+An [integer](#integer) representing a number of seconds.
+
+## bytes
+
+A base 64 encoded [string](#string) representing some bytes.
+
+### optional (some other type)
+
+A value which may either be [`null`](#null) or some other specified type.

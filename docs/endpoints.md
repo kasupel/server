@@ -18,7 +18,7 @@ Some endpoints require that the logged in user's email be verified. These are ma
 
 ## Parameters
 
-For body-less endpoints (here, just `GET` and `DELETE`), parameters should be sent as URL parameters, or in some cases as documented, as part of the URL path. Other endpoints (here, `POST` and `PATCH`), parameters should be sent as JSON in the body (or encrypted JSON, as described above).See [types](./types.md) for an explanation of the types, though mostly they are native JSON types.
+For body-less endpoints (here, just `GET` and `DELETE`), parameters should be sent as URL parameters, or in some cases as documented, as part of the URL path. Other endpoints (here, `POST` and `PATCH`), parameters should be sent as JSON in the body (or encrypted JSON, as described above). See [types](./types.md) for an explanation of the types, though mostly they are native JSON types.
 
 ## Responses
 
@@ -32,15 +32,15 @@ Starts an authenticated session, see [authorisation](./authorisation.md) for mor
 
 Parameters:
 
-- `username` (string)
-- `password` (string)
-- `token` (bytes)
+- `username` ([string](./types.md#string))
+- `password` ([string](./types.md#string))
+- `token` ([string](./types.md#string))
 
-The `token` should be a base64 encoded string of 32 bytes.
+The `token` should be a base64 encoded [string](./types.md#string) of 32 bytes.
 
 Returns:
 
-- `session_id` (integer)
+- `session_id` ([integer](./types.md#integer))
 
 ### `[A] GET /accounts/logout`
 
@@ -52,9 +52,9 @@ Creates a new account.
 
 Parameters:
 
-- `username` (string, between 1 and 32 characters)
-- `password` (string, between 10 and 32 characters, more than 6 unique characters, not in the [haveibeenpwned](https://haveibeenpwned.com) database)
-- `email` (string)
+- `username` ([string](./types.md#string), between 1 and 32 characters)
+- `password` ([string](./types.md#string), between 10 and 32 characters, more than 6 unique characters, not in the [haveibeenpwned](https://haveibeenpwned.com) database)
+- `email` ([string](./types.md#string))
 
 ### `[A] GET /accounts/resend_verification_email`
 
@@ -66,8 +66,8 @@ Verifies the email account associated with the logged in user. `token` is a 6 ch
 
 Parameters:
 
-- `username` (string)
-- `token` (string)
+- `username` ([string](./types.md#string))
+- `token` ([string](./types.md#string))
 
 ### `[A][E] PATCH /accounts/me`
 
@@ -75,9 +75,9 @@ Updates the logged in user's account.
 
 Parameters:
 
-- `password` (optional string, see `/accounts/create` for security requirements)
-- `avatar` (optional bytes)
-- `email` (optional string)
+- `password` ([optional](./types.md#optional-some-other-type) [string](./types.md#string), see `/accounts/create` for security requirements)
+- `avatar` ([optional](./types.md#optional-some-other-type) [bytes](./types.md#bytes))
+- `email` ([optional](./types.md#optional-some-other-type) [string](./types.md#string))
 
 ### `[A] DELETE /accounts/me`
 
@@ -87,7 +87,7 @@ Deletes the logged in user's account.
 
 Get the current users account details.
 
-Returns a `User` object, including email.
+Returns a [`User` object](./types.md#user), including email.
 
 ### `GET /accounts/account`
 
@@ -95,7 +95,7 @@ Get a user by ID.
 
 Parameters:
 
-- `id` (integer)
+- `id` ([integer](./types.md#integer),)
 
 ### `GET /users/<username>`
 
@@ -103,7 +103,7 @@ Get a user by username.
 
 Parameters:
 
-- `username` (string, in the URL path)
+- `username` ([string](./types.md#string), in the URL path)
 
 ### `[P] GET /accounts/accounts`
 
@@ -111,7 +111,7 @@ Get a list of all users, sorted by descending ELO.
 
 Returns:
 
-- `users` (list of `User` objects, without emails)
+- `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user), without emails)
 
 ### `[A][P] GET /games/invites`
 
@@ -119,8 +119,8 @@ Get a list of games the logged in user has been invited too.
 
 Returns:
 
-- `games` (list of `Game` objects, referencing users by ID)
-- `users` (list of `User` objects referenced by the games)
+- `games` ([list](./types.md#list-of-some-other-type) of [`Game` objects](./types.md#game), referencing users by ID)
+- `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user) referenced by the games)
 
 ### `[A][P] GET /games/searches`
 
@@ -128,8 +128,8 @@ Get a list of games where the logged in user is looking for an opponent. This in
 
 Returns:
 
-- `games` (list of `Game` objects, referencing users by ID)
-- `users` (list of `User` objects referenced by the games)
+- `games` ([list](./types.md#list-of-some-other-type) of [`Game` objects](./types.md#game), referencing users by ID)
+- `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user) referenced by the games)
 
 ### `[A][P] GET /games/ongoing`
 
@@ -137,8 +137,8 @@ Get a list of games that are currently ongoing and include the logged in user.
 
 Returns:
 
-- `games` (list of `Game` objects, referencing users by ID)
-- `users` (list of `User` objects referenced by the games)
+- `games` ([list](./types.md#list-of-some-other-type) of [`Game` objects](./types.md#game), referencing users by ID)
+- `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user) referenced by the games)
 
 ### `[P] GET /games/completed`
 
@@ -146,12 +146,12 @@ Get a list of games that the specified user took part in that have now ended.
 
 Parameters:
 
-- `account` (string, a username)
+- `account` ([string](./types.md#string), a username)
 
 Returns:
 
-- `games` (list of `Game` objects, referencing users by ID)
-- `users` (list of `User` objects referenced by the games)
+- `games` ([list](./types.md#list-of-some-other-type) of [`Game` objects](./types.md#game), referencing users by ID)
+- `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user) referenced by the games)
 
 ### `[A][P] GET /games/common_completed`
 
@@ -159,12 +159,12 @@ Get a list of games that the specified user and the logged in user took part in 
 
 Parameters:
 
-- `account` (string, a username)
+- `account` ([string](./types.md#string), a username)
 
 Returns:
 
-- `games` (list of `Game` objects, referencing users by ID)
-- `users` (list of `User` objects referenced by the games)
+- `games` ([list](./types.md#list-of-some-other-type) of [`Game` objects](./types.md#game), referencing users by ID)
+- `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user) referenced by the games)
 
 ### `GET /games/<game>`
 
@@ -172,9 +172,9 @@ Get a game by ID.
 
 Parameters:
 
-- `game` (integer, in the URL path)
+- `game` ([integer](./types.md#integer), in the URL path)
 
-Returns a `Game` object, with users included.
+Returns a [`Game` object](./types.md#game), with users included.
 
 ### `[A][V] POST /games/find`
 
@@ -182,14 +182,14 @@ Create or join an unstarted game.
 
 Parameters:
 
-- `main_thinking_time` (timedelta)
-- `fixed_extra_time` (timedelta)
-- `time_increment_per_turn` (timedelta)
-- `mode` (`GameMode` enum)
+- `main_thinking_time` ([timedelta](./types.md#timedelta))
+- `fixed_extra_time` ([timedelta](./types.md#timedelta))
+- `time_increment_per_turn` ([timedelta](./types.md#timedelta))
+- `mode` ([`GameMode` enum](./types.md#gamemode))
 
 Returns:
 
-- `game_id` (integer, the ID of the found or joined game)
+- `game_id` ([integer](./types.md#integer),, the ID of the found or joined game)
 
 ### `[A][V] POST /games/send_invitation`
 
@@ -197,15 +197,15 @@ Send an invitation to another user.
 
 Parameters:
 
-- `invitee` (string, the target user's username)
-- `main_thinking_time` (timedelta)
-- `fixed_extra_time` (timedelta)
-- `time_increment_per_turn` (timedelta)
-- `mode` (`GameMode` enum)
+- `invitee` ([string](./types.md#string), the target user's username)
+- `main_thinking_time` ([timedelta](./types.md#timedelta))
+- `fixed_extra_time` ([timedelta](./types.md#timedelta))
+- `time_increment_per_turn` ([timedelta](./types.md#timedelta))
+- `mode` ([`GameMode` enum](./types.md#gamemode))
 
 Returns:
 
-- `game_id` (integer, the ID of the found or created game)
+- `game_id` ([integer](./types.md#integer),, the ID of the found or created game)
 
 ### `[A][V] POST /games/invites/<game>`
 
@@ -213,7 +213,7 @@ Accept an invitation you have been sent.
 
 Parameters:
 
-- `game` (integer, in the URL path)
+- `game` ([integer](./types.md#integer),, in the URL path)
 
 ### `[A] DELETE /games/invites/<game>`
 
@@ -221,4 +221,4 @@ Decline an invitation you have been sent.
 
 Parameters:
 
-- `game` (integer, in the URL path)
+- `game` ([integer](./types.md#integer), in the URL path)

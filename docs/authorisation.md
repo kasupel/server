@@ -4,7 +4,7 @@ In order to avoid requiring the username and password to be sent with every requ
 
 ## Starting a session
 
-A session is started using the `/accounts/login` endpoint, documented in [endpoints](./endpoints.md). This accepts `username` and `password` parameters (which will be validated), and a `token` parameter. The token should be string of 32 bytes, encoded in base64. These should be generated unpredictably, as they will form a password of sorts for the duration of the session. This endpoint will return a session ID. This is like the username for the session.
+A session is started using the [`/accounts/login`](./endpoints.md#e-post-accountslogin). This accepts `username` and `password` parameters (which will be validated), and a `token` parameter. The token should be [string](./types.md#string) of 32 bytes, encoded in base64. These should be generated unpredictably, as they will form a password of sorts for the duration of the session. This endpoint will return a session ID. This is like the username for the session.
 
 ## Authorising requests
 
@@ -12,7 +12,7 @@ Requests can be authorised by passing `session_token` and `session_id` parameter
 
 ## Ending a session
 
-Sessions will automatically expire after 30 days (exact time may change), but you can also delete a session with the authorised `/accounts/logout` endpoint.
+Sessions will automatically expire after 30 days (exact time may change), but you can also delete a session with the authorised [`/accounts/logout`](./endpoints.md#a-get-accountslogout) endpoint.
 
 ## Connecting to a socket
 
