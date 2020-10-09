@@ -97,6 +97,8 @@ def allowed_moves():
     Only allowed if it is your turn.
     """
     game = flask.request.context.game
+    if not flask.request.context.game.started_at:
+        raise helpers.RequestError(2311)
     if flask.request.context.side != game.current_turn:
         raise helpers.RequestError(2312)
     helpers.send_user('allowed_moves', get_allowed_moves(game))
@@ -138,6 +140,8 @@ def move(move_data: typing.Dict[str, typing.Any]):
 @helpers.event('offer_draw')
 def offer_draw():
     """Handle a user offering a draw."""
+    if not flask.request.context.game.started_at:
+        raise helpers.RequestError(2311)
     if flask.request.context.side == models.Side.HOME:
         flask.request.context.game.home_offering_draw = True
     else:

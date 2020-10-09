@@ -428,7 +428,13 @@ class Chess(gamemode.GameMode):
                 if len(move) == 4:
                     move = (*move, None)    # Add null promotion if not given.
                 if not self.hypothetical_check(side, move):
-                    yield move
+                    yield {
+                        'start_rank': move[0],
+                        'start_file': move[1],
+                        'end_rank': move[2],
+                        'end_file': move[3],
+                        'promotion': move[4]
+                    }
 
     def game_is_over(self) -> models.Conclusion:
         """Check if the game has been won or tied.
