@@ -1,6 +1,6 @@
 # Kasupel
 
-![Discord](https://img.shields.io/discord/758746280968192060?color=%237289DA&label=Discord&logo=discord&logoColor=%23ffffff&style=flat-square)
+[![Discord](https://img.shields.io/discord/758746280968192060?color=%237289DA&label=Discord&logo=discord&logoColor=%23ffffff&style=flat-square)](https://discordapp.com/invite/Na4HZ5)
 
 A chess game with custom pieces and boards.
 
