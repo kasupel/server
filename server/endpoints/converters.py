@@ -86,7 +86,13 @@ def get_converters(
     """Detect the type hints used and provide converters for them."""
     converters = {}
     authenticated = False
-    params = inspect.signature(endpoint).parameters.items()
+    params = list(inspect.signature(endpoint).parameters.items())
+    if '.' in endpoint.__qualname__:
+        # Is a method of a class, so discard the first parameter ('self').
+        # FIXME: This won't always work, for example with a @staticmethod.
+        # Note that we cannot use inspect.ismethod since that returns False
+        # for unbound methods.
+        params.pop(0)
     for n, param in enumerate(params):
         name, details = param
         if n == 0 and name == 'user':
@@ -96,7 +102,9 @@ def get_converters(
         if isinstance(type_hint, str):
             # If `from __future__ import annotations` is used, annotations
             # will be strings.
-            type_hint = eval(endpoint, endpoint.__globals__)
+            type_hint = eval(type_hint, endpoint.__globals__)
+        is_class = inspect.isclass(type_hint)
+        is_generic = isinstance(type_hint, typing._GenericAlias)
         if type_hint == str:
             converter = str
         elif type_hint == int:
@@ -105,14 +113,17 @@ def get_converters(
             converter = _bytes_converter
         elif type_hint == datetime.timedelta:
             converter = _timedelta_converter
-        elif issubclass(type_hint, peewee.Model):
+        elif is_class and issubclass(type_hint, peewee.Model):
             converter = type_hint.converter
-        elif issubclass(type_hint, enum.Enum):
+        elif is_class and issubclass(type_hint, enum.Enum):
             converter = _make_enum_converter(type_hint)
-        elif type_hint == typing.Dict:
+        elif is_generic and typing.get_origin(type_hint) == dict:
             converter = _dict_converter
         else:
-            raise RuntimeError(f'Converter needed for argument {name}.')
+            type_hint_name = getattr(type_hint, '__name__', type_hint)
+            raise RuntimeError(
+                f'Converter needed for argument {name} ({type_hint_name}).'
+            )
         if details.default != inspect._empty:
             converter = _default_converter(details.default, converter)
         else:
@@ -140,8 +151,10 @@ def wrap(endpoint: typing.Callable) -> typing.Callable:
                 converted[kwarg] = kwargs[kwarg]
         try:
             return endpoint(**converted)
-        except TypeError:
-            # Unexpected key word argument or missing required argument.
-            raise helpers.RequestError(3102)
+        except TypeError as e:
+            if helpers.is_wrong_arguments(e, endpoint):
+                raise helpers.RequestError(3102)
+            else:
+                raise e
 
     return wrapped

@@ -8,14 +8,13 @@ from .helpers import RequestError, endpoint
 from .. import events, models
 
 
-@models.db.atomic()
 @endpoint('/games/find', method='POST', require_verified_email=True)
 def find_game(
         user: models.User,
         main_thinking_time: datetime.timedelta,
         fixed_extra_time: datetime.timedelta,
         time_increment_per_turn: datetime.timedelta,
-        mode: int) -> typing.Dict[str, int]:
+        mode: models.Mode) -> typing.Dict[str, int]:
     """Find a game matching parameters, or create one if not found."""
     try:
         game = models.Game.get(
@@ -40,7 +39,6 @@ def find_game(
     }
 
 
-@models.db.atomic()
 @endpoint('/games/send_invitation', method='POST', require_verified_email=True)
 def send_invitation(
         user: models.User,
@@ -48,7 +46,7 @@ def send_invitation(
         main_thinking_time: datetime.timedelta,
         fixed_extra_time: datetime.timedelta,
         time_increment_per_turn: datetime.timedelta,
-        mode: int) -> typing.Dict[str, int]:
+        mode: models.Mode) -> typing.Dict[str, int]:
     """Create a game which only a specific person may join."""
     if user == invitee:
         raise RequestError(2121)
@@ -63,7 +61,6 @@ def send_invitation(
     }
 
 
-@models.db.atomic()
 @endpoint('/games/invites/<game>', method='POST', require_verified_email=True)
 def accept_invitation(user: models.User, game: models.Game):
     """Accept a game you have been invited to."""
@@ -73,13 +70,14 @@ def accept_invitation(user: models.User, game: models.Game):
     events.has_started(game)
 
 
-@models.db.atomic()
 @endpoint('/games/invites/<game>', method='DELETE')
 def decline_invitation(user: models.User, game: models.Game):
     """Decline a game you have been invited to."""
     if game.invited != user:
         raise RequestError(2111)
-    events.disconnect_game(
-        game.host_socket_id, reason=events.DisconnectReason.INVITE_DECLINED
-    )
+    if game.host_socket_id:
+        events.disconnect(
+            game.host_socket_id,
+            reason=events.DisconnectReason.INVITE_DECLINED
+        )
     game.delete_instance()

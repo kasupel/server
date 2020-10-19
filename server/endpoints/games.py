@@ -28,7 +28,7 @@ def _get_list_of_games(
     """Get some list of games including given fields."""
     games = []
     query = models.Game.select(
-        models.Game, models.HostUser, models.AwayUser
+        models.Game, models.HostUser, models.AwayUser, models.InvitedUser
     ).join(
         models.HostUser, join_type=peewee.JOIN.LEFT_OUTER,
         on=(models.Game.host == models.HostUser.id)

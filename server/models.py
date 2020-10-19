@@ -16,7 +16,7 @@ import peewee as pw
 
 import playhouse.postgres_ext as pw_postgres
 
-from . import config, gamemodes, timing
+from . import config, timing
 from .endpoints import converters, helpers
 
 
@@ -168,11 +168,15 @@ class EnumField(pw.SmallIntegerField):
 
     def python_value(self, raw: typing.Any) -> enum.Enum:
         """Convert a raw number to an enum value."""
+        if raw is None:
+            return None
         number = super().python_value(raw)
         return self.options(number)
 
     def db_value(self, instance: enum.Enum) -> typing.Any:
         """Convert an enum value to a raw number."""
+        if instance is None:
+            return super().db_value(None)
         if not isinstance(instance, self.options):
             raise TypeError(f'Instance is not of enum class {self.options}.')
         number = instance.value
@@ -483,3 +487,6 @@ AwayUser = User.alias()
 InvitedUser = User.alias()
 
 db.create_tables([User, Session, Game, Piece, GameState])
+
+
+from . import gamemodes    # noqa: E402 - avoiding circular import
