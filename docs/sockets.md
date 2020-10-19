@@ -12,15 +12,15 @@ Connecting is done under the default namespace. As well as [the `Authorization` 
 
 ## Client initiated events
 
-### `game_state`
+### `game_state` (client)
 
 Request that the server send the current state of the game. The server should respond with a `game_state` event. This is only allowed if the game has started.
 
-### `allowed_moves`
+### `allowed_moves` (client)
 
 Request that the server send a list of moves you are allowed to make. The server should respond with an `allowed_moves` event. This is only allowed if the game has started and it is your turn.
 
-### `move`
+### `move` (client)
 
 Make a move in the game. Data should be a [`Move` object](./types.md#move).
 
@@ -69,7 +69,7 @@ Fields:
 
 Your opponent has offered a draw.
 
-### `move`
+### `move` (server)
 
 Your opponent has made a move, and it is now your turn.
 
@@ -79,7 +79,7 @@ Fields:
 - `game_state` (as in the server initiated `game_state` event)
 - `allowed_moves` (as in the server initiated `allowed_moves` event)
 
-### `game_state`
+### `game_state` (server)
 
 An event containing the current state of the game. This is sent on connect (if the game has started), as well as when requested.
 
@@ -92,7 +92,7 @@ Fields:
 - `current_turn` ([`Side` enum](./types.md#side))
 - `turn_number` ([integer](./types.md#integer))
 
-### `allowed_moves`
+### `allowed_moves` (server)
 
 Fields:
 

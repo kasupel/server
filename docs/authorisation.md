@@ -18,13 +18,13 @@ Sessions will automatically expire after 30 days (exact time may change), but yo
 
 When connecting to a socket ([sockets](./sockets.md)), you should include an `Authorization` header. This should look like:
 
-```
+```text
 Authorization: SessionKey <session_id>|<session_token>
 ```
 
 For example:
 
-```
+```text
 Authorization: SessionKey 1234|sw72sZiTWhQ+vPWmHYgTzuqo1NCoz7/W/0Y3S39Pc7c=
 ```
 

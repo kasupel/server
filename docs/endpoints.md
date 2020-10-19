@@ -1,4 +1,6 @@
-# Endpoints
+# HTTP Endpoints
+
+TODO: Document errors in a separate document.
 
 ## Authorisation
 
