@@ -6,7 +6,7 @@ A chess game with custom pieces and boards. [Join the discord](<https://discord.
 
 ### 1: Install Python
 
-The Python version must be of the form 3.x, where x >= 8 (no Python 2.x, Python 3.6 or Python 4, for example).
+The Python version must be of the form 3.x, where x >= 9 (no Python 2.x, Python 3.6 or Python 4, for example).
 
 Python can be installed from the [official website](https://www.python.org/downloads/), or on Debain, with `sudo apt install python3.8 python3.8-dev`. Python may already be installed on some systems, but make sure the version is up to date.
 
