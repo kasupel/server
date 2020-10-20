@@ -52,6 +52,7 @@ def paginate(
     Returns results and number of pages.
     """
     total_results = query.count()
+    print(total_results, page)
     pages = math.ceil(total_results / per_page)
     if pages and page >= pages:
         raise RequestError(3201)
@@ -73,6 +74,19 @@ def interpret_integrity_error(
         return 'duplicate', match.group(1)
     else:
         raise ValueError('Unknown integrity error.') from error
+
+
+def is_wrong_arguments(error: TypeError, fun: typing.Callable) -> bool:
+    """Check if a type error is due to incorrect arguments.
+
+    Only checks for keyword arguments for a specific function.
+    """
+    err = str(error).removeprefix(fun.__name__)    # Requires Python 3.9!
+    return bool(re.match(
+        r'\(\) (got an unexpected keyword|missing [0-9]+ required '
+        r'(positional|keyword-only)) arguments?',
+        err
+    ))
 
 
 def _decrypt_request(raw: bytes) -> typing.Dict[str, typing.Any]:
@@ -159,7 +173,8 @@ def endpoint(
         url: str, method: str,
         encrypt_request: bool = False,
         raw_return: bool = False,
-        require_verified_email: bool = False) -> typing.Callable:
+        require_verified_email: bool = False,
+        database_transaction: bool = True) -> typing.Callable:
     """Create a wrapper for an endpoint."""
     method = method.upper()
     if method not in ('GET', 'DELETE', 'POST', 'PATCH'):
@@ -169,6 +184,8 @@ def endpoint(
 
     def wrapper(main: typing.Callable) -> typing.Callable:
         """Wrap an endpoint."""
+        if database_transaction:
+            main = models.db.atomic()(main)
         converter_wrapped = converters.wrap(main)
 
         @functools.wraps(main)
@@ -204,7 +221,9 @@ def endpoint(
     return wrapper
 
 
-@endpoint('/rsa_key', method='GET', raw_return=True)
+@endpoint(
+    '/rsa_key', method='GET', raw_return=True, database_transaction=False
+)
 def get_public_key() -> str:
     """Get our public RSA key."""
     return config.PUBLIC_KEY

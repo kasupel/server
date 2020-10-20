@@ -9,7 +9,7 @@
       "1120": "Invalid password.",
         "1121": "Password too short - must be at least 10 characters.",
         "1122": "Password too long - may not be more than 32 characters.",
-        "1123": "Password too repetetive - must include at least 6 unique characters.",
+        "1123": "Password too repetitive - must include at least 6 unique characters.",
         "1124": "Password too common.",
       "1130": "Invalid email address.",
         "1131": "Email address too long - may not be more than 255 characters.",
@@ -59,7 +59,7 @@
     "3200": "Pagination error.",
         "3201": "Page does not exist.",
     "3300": "URL error.",
-        "3301": "Unkown URL.",
+        "3301": "Unknown URL.",
     "3400": "Socket connection error.",
       "3410": "Bad authorisation header.",
         "3411": "Empty or missing authorisation header.",
@@ -68,7 +68,7 @@
       "3420": "Bad game ID header.",
         "3421": "Empty or missing game ID header.",
   "4000": "Internal error",
-        "4001": "Unkown internal error",
+        "4001": "Unknown internal error",
     "4100": "Internal socket error.",
         "4101": "Socket session ID not known."
 }

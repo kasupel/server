@@ -70,7 +70,6 @@ def _validate_email(email: str):
             raise RequestError(1131)
 
 
-@models.db.atomic()
 @endpoint('/accounts/login', method='POST', encrypt_request=True)
 def login(
         username: str, password: str, token: bytes) -> typing.Dict[str, int]:
@@ -81,14 +80,12 @@ def login(
     return {'session_id': session.id}
 
 
-@models.db.atomic()
 @endpoint('/accounts/logout', method='GET')
 def logout(user: models.User):
     """Create a new authentication session."""
     flask.request.session.delete_instance()
 
 
-@models.db.atomic()
 @endpoint('/accounts/create', method='POST', encrypt_request=True)
 def create_account(username: str, password: str, email: str):
     """Create a new user account."""
@@ -122,7 +119,6 @@ def send_verification_email(user: models.User):
     emails.send_email(user.email, message, 'Kasupel email verification')
 
 
-@models.db.atomic()
 @endpoint('/accounts/verify_email', method='GET')
 def verify_email(username: str, token: str):
     """Verify an email address."""
@@ -137,7 +133,6 @@ def verify_email(username: str, token: str):
     user.save()
 
 
-@models.db.atomic()
 @endpoint('/accounts/me', method='PATCH', encrypt_request=True)
 def update_account(
         user: models.User, password: str = None, avatar: bytes = None,
@@ -202,7 +197,6 @@ def get_accounts(page: int = 0) -> typing.Dict[str, typing.Any]:
     }
 
 
-@models.db.atomic()
 @endpoint('/accounts/me', method='DELETE')
 def delete_account(user: models.User):
     """Delete a user's account."""

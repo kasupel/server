@@ -1,6 +1,8 @@
+cffi
 cryptography
-flask
-peewee
-requests
-psycopg2-binary
 eventlet
+flask
+flask_socketio
+peewee
+psycopg2-binary
+requests
