@@ -4,6 +4,7 @@ This module does not handle encryption.
 """
 import datetime
 import hashlib
+import re
 import typing
 
 import flask
@@ -145,9 +146,6 @@ def update_account(
         _validate_email(email)
         user.email = email
     if avatar:
-        # FIXME: Some validation that the avatar is actually an image?
-        #        Maybe a maximum size, too? Should media really be stored in
-        #        the database? Is there a better way?
         user.avatar = avatar
     try:
         user.save()
@@ -213,3 +211,22 @@ def delete_account(user: models.User):
         ended_at=datetime.datetime.now()
     ).where(models.Game.away == user)
     user.delete_instance()
+
+
+@endpoint('/media/avatar/<avatar_name>', method='GET')
+def get_avatar(avatar_name: str) -> bytes:
+    """Get a user's avatar."""
+    m = re.match(r'(\d+)-(\d+)\.(gif|jpeg|png|webp)$', avatar_name)
+    if not m:
+        raise RequestError(5001)
+    user_id, avatar_id, ext = m.groups()
+    user_id = int(user_id)
+    avatar_id = int(avatar_id)
+    user = models.User.get_or_none(
+        models.User.id == user_id,
+        models.User.avatar_number == avatar_id,
+        models.User.avatar_extension == ext
+    )
+    if not user:
+        raise RequestError(5001)
+    return user.avatar

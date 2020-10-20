@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import functools
+import io
 import json
 import math
 import pathlib
@@ -172,7 +173,7 @@ def _process_request(
 def endpoint(
         url: str, method: str,
         encrypt_request: bool = False,
-        raw_return: bool = False,
+        return_type: str = 'json',
         require_verified_email: bool = False,
         database_transaction: bool = True) -> typing.Callable:
     """Create a wrapper for an endpoint."""
@@ -206,14 +207,20 @@ def endpoint(
                 code = 200
             if response is None:
                 code = 204
-            if raw_return:
+            if return_type == 'json' or code == 400:
+                response = flask.jsonify(response or {})
+                return response, code
+            elif return_type == 'text':
                 response = response or ''
                 return flask.Response(
                     response, status=code, mimetype='text/plain'
                 )
+            elif return_type == 'image':
+                return flask.send_file(
+                    io.BytesIO(response), cache_timeout=31536000
+                )
             else:
-                response = flask.jsonify(response or {})
-                return response, code
+                raise RuntimeError(f'Unkown return type {return_type}.')
 
         flask_wrapped = app.route(url, methods=[method])(return_wrapped)
         return flask_wrapped
@@ -222,7 +229,7 @@ def endpoint(
 
 
 @endpoint(
-    '/rsa_key', method='GET', raw_return=True, database_transaction=False
+    '/rsa_key', method='GET', return_type='text', database_transaction=False
 )
 def get_public_key() -> str:
     """Get our public RSA key."""

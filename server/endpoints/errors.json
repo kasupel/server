@@ -56,6 +56,8 @@
         "3112": "Invalid base 64 string.",
         "3113": "Invalid JSON object.",
         "3114": "Unknown value for enum.",
+        "3115": "Image must be gif, jpeg, png or webp.",
+        "3116": "Image must be less than 1 MB.",
     "3200": "Pagination error.",
         "3201": "Page does not exist.",
     "3300": "URL error.",
@@ -67,8 +69,10 @@
         "3413": "Badly formatted session key.",
       "3420": "Bad game ID header.",
         "3421": "Empty or missing game ID header.",
-  "4000": "Internal error",
+  "4000": "Internal error.",
         "4001": "Unknown internal error",
     "4100": "Internal socket error.",
-        "4101": "Socket session ID not known."
+        "4101": "Socket session ID not known.",
+  "5000": "Media error.",
+        "5001": "Resource not found."
 }
