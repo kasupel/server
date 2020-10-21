@@ -16,7 +16,7 @@ import peewee as pw
 
 import playhouse.postgres_ext as pw_postgres
 
-from . import config, timing
+from . import config, images, timing
 from .endpoints import converters, helpers
 
 
@@ -242,8 +242,11 @@ class User(BaseModel):
     _email = pw.CharField(max_length=255, unique=True, column_name='email')
     email_verify_token = pw.CharField(max_length=6, null=True)
     elo = pw.SmallIntegerField(default=1000)
-    avatar = pw.BlobField(null=True)
     created_at = pw.DateTimeField(default=datetime.datetime.now)
+
+    _avatar = pw.BlobField(null=True, column_name='avatar')
+    avatar_number = pw.SmallIntegerField(default=0)
+    avatar_extension = pw.CharField(max_length=4, null=True)
 
     class KasupelMeta:
         """Set the "not found" error code and use username as key."""
@@ -264,6 +267,25 @@ class User(BaseModel):
             raise helpers.RequestError(1302)
         session = Session.create(user=user, token=token)
         return session
+
+    @property
+    def avatar(self) -> bytes:
+        """Get the avatar as bytes."""
+        return bytes(self.avatar) if self.avatar else None
+
+    @avatar.setter
+    def avatar(self, new: bytes):
+        """Set the avatar and increment the avatar number."""
+        ext = images.validate(new)
+        self.avatar_extension = ext
+        self.avatar_number += 1
+        self._avatar = new
+
+    @property
+    def avatar_name(self) -> typing.Optional[str]:
+        """Get a file name to represent the avatar."""
+        if self.avatar:
+            return f'{self.id}-{self.avatar_number}.{self.avatar_extension}'
 
     @property
     def password(self) -> HashedPassword:
@@ -311,8 +333,7 @@ class User(BaseModel):
             'id': self.id,
             'username': self.username,
             'elo': self.elo,
-            # FIXME: Avatar url should be a url, how are we gonna do media?
-            'avatar_url': None,
+            'avatar_url': f'/media/avatar/{self.avatar_name}',
             'created_at': int(self.created_at.timestamp())
         }
         if not hide_email:
