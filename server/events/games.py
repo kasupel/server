@@ -23,7 +23,7 @@ def assert_game_in_progress():
         raise helpers.RequestError(2311)
 
 
-def get_game_state(game: models.Game) -> typing.Dict[str, typing.Any]:
+def get_game_state(game: models.Game) -> dict[str, typing.Any]:
     """Send the game state for an ongoing game."""
     pieces = models.Piece.select().where(models.Piece.game == game)
     board = {}
@@ -42,7 +42,7 @@ def get_game_state(game: models.Game) -> typing.Dict[str, typing.Any]:
     }
 
 
-def get_allowed_moves(game: models.Game) -> typing.Dict[str, typing.Any]:
+def get_allowed_moves(game: models.Game) -> dict[str, typing.Any]:
     """Get allowed moves for the user whose turn it is."""
     moves = list(game.game_mode.possible_moves(game.current_turn))
     if game.other_valid_draw_claim:
@@ -113,7 +113,7 @@ def allowed_moves():
 
 
 @helpers.event('move')
-def move(move_data: typing.Dict[str, typing.Any]):
+def move(move_data: dict[str, typing.Any]):
     """Handle a move being made."""
     assert_game_in_progress()
     game = flask.request.context.game

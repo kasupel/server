@@ -4,6 +4,10 @@ The API uses standard JSON almost exclusively, however in the documentation type
 
 ## Native JSON types
 
+### `object`
+
+Refers to the JSON dict type, usually with reference to the type of data included.
+
 ### `string`
 
 Refers to the JSON string type.
@@ -108,6 +112,20 @@ Example:
 ```
 
 Squares with no piece on them will not be included.
+
+### Notification
+
+An object representing a notification to be displayed to the user.
+
+Fields:
+
+- `id` ([integer](#integer))
+- `sent_at` ([date](#date))
+- `type_code` ([integer](#integer))
+- `values` ([JSON object](#object) with [string](#string) attributes)
+- `read` ([boolean](#boolean))
+
+TODO: Add documentation of type codes.
 
 ## Enums
 

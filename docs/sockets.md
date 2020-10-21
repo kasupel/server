@@ -104,3 +104,9 @@ Fields:
 - `draw_claim` ([optional](./types.md#optional-some-other-type) [`Conclusion` enum](./types.md#conclusion))
 
 Note `draw_claim` will only be "Agreed draw", "threefold repetition" or "50 move rule" (or [`null`](./types.md#null)).
+
+### `notification`
+
+Fields are the same as [a `Notification` object](./types.md#notification).
+
+Indicates that the user has received a new notification.

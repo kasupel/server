@@ -1,6 +1,5 @@
 """Handle connect and disconnect events."""
 import enum
-import typing
 
 import flask
 
@@ -25,7 +24,7 @@ def disconnect(socket_id: str, reason: DisconnectReason):
     sockets.disconnect(socket_id)
 
 
-def parse_connect_headers() -> typing.Tuple[models.Session, models.Game]:
+def parse_connect_headers() -> tuple[models.Session, models.Game]:
     """Parse the Authorization and Game-ID headers used when connecting."""
     # Parse the authorisation header.
     authorisation = flask.request.headers.get('Authorization')
