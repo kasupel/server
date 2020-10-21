@@ -3,7 +3,36 @@ from __future__ import annotations
 
 import datetime
 
-from . import models
+from . import config, events, models
+
+
+def timer_loop():
+    """Loop to check for games where the player on move has timed out."""
+    if not config.TIMER_CHECK_INTERVAL:
+        # The loop is disabled, we will rely on client reports.
+        return
+    while True:
+        now = datetime.datetime.now()
+        games = models.Games.select().where(
+            (
+                models.Game.current_turn == models.Side.HOME
+                & (
+                    models.Game.last_turn
+                    + models.Game.home_time
+                    + models.Game.fixed_extra_time
+                ) > now
+            ) | (
+                models.Game.current_turn == models.Side.AWAY
+                & (
+                    models.Game.last_turn
+                    + models.Game.away_time
+                    + models.Game.fixed_extra_time
+                ) > now
+            )
+        )
+        for game in games:
+            events.end_game(game)
+        events.socketio.sleep(config.TIMER_CHECK_INTERVAL)
 
 
 class Timer:
@@ -47,6 +76,3 @@ class Timer:
             + current_timer
             + self.game.fixed_extra_time
         )
-
-
-# TODO: Actually use timing.

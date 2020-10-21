@@ -14,6 +14,7 @@ with open(_config_file) as f:
 
 
 ELO_K_FACTOR = config.get('elo_k_factor', 32)
+TIMER_CHECK_INTERVAL = config.get('timer_check_interval', 60)
 
 
 DB_NAME = config['db_name']
