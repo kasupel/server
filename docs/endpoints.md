@@ -81,6 +81,8 @@ Parameters:
 - `avatar` ([optional](./types.md#optional-some-other-type) [bytes](./types.md#bytes))
 - `email` ([optional](./types.md#optional-some-other-type) [string](./types.md#string))
 
+The avatar, if present, must be a png, jpeg, gif or webp image no more than 1 MB in size (once decoded from base 64).
+
 ### `[A] DELETE /accounts/me`
 
 Deletes the logged in user's account.
