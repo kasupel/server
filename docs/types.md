@@ -35,9 +35,11 @@ Fields:
 - `id` ([integer](#integer))
 - `username` ([string](#string))
 - `elo` ([integer](#integer))
-- `avatar_url` (currently [`null`](#null), until media is implemented)
+- `avatar_url` ([optional](#optional-some-other-type) [string](#string))
 - `created_at` ([date](#date))
 - `email` ([string](#string), may not be included)
+
+The avatar URL will be relative to the top level of the API (for example, if you got a user object from `https://example.com/api/v1/accounts/account` and the `avatar_url` was `/media/avatar/813-3.png`, the full URL would be `https://example.com/api/v1/media/avatar/813-3.png`).
 
 ### Game
 
