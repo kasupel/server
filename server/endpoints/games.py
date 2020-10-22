@@ -23,8 +23,8 @@ def td(x: datetime.timedelta) -> int:
 
 
 def _get_list_of_games(
-        conditions: typing.Tuple[peewee.Query], page: int) -> typing.List[
-            typing.Dict[str, typing.Any]]:
+        conditions: tuple[peewee.Query], page: int) -> list[
+            dict[str, typing.Any]]:
     """Get some list of games including given fields."""
     games = []
     query = models.Game.select(
@@ -61,14 +61,14 @@ def _get_list_of_games(
 
 @endpoint('/games/invites', method='GET')
 def get_incoming_invites(
-        user: models.User, page: int = 0) -> typing.Dict[str, typing.Any]:
+        user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get a list of incoming invites for a user."""
     return _get_list_of_games((models.Game.invited == user,), page)
 
 
 @endpoint('/games/searches', method='GET')
 def get_outgoing_searches(
-        user: models.User, page: int = 0) -> typing.Dict[str, typing.Any]:
+        user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get a list of game searches and outgoing invites for a user."""
     return _get_list_of_games(
         (
@@ -80,7 +80,7 @@ def get_outgoing_searches(
 
 @endpoint('/games/ongoing', method='GET')
 def get_ongoing_games(
-        user: models.User, page: int = 0) -> typing.Dict[str, typing.Any]:
+        user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get games a user is currently taking part in."""
     return _get_list_of_games(
         (
@@ -93,7 +93,7 @@ def get_ongoing_games(
 
 @endpoint('/games/completed', method='GET')
 def get_completed_games(
-        account: models.User, page: int = 0) -> typing.Dict[str, typing.Any]:
+        account: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get games a user has completed."""
     return _get_list_of_games(
         (
@@ -106,7 +106,7 @@ def get_completed_games(
 @endpoint('/games/common_completed', method='GET')
 def get_common_completed_games(
         user: models.User, account: models.User,
-        page: int = 0) -> typing.Dict[str, typing.Any]:
+        page: int = 0) -> dict[str, typing.Any]:
     """Get games two users have played together."""
     return _get_list_of_games(
         (
@@ -120,6 +120,6 @@ def get_common_completed_games(
 
 
 @endpoint('/games/<int:game>', method='GET')
-def get_game(game: models.Game) -> typing.Dict[str, typing.Any]:
+def get_game(game: models.Game) -> dict[str, typing.Any]:
     """Get a game by ID."""
     return game.to_json()

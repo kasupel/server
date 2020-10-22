@@ -13,7 +13,17 @@ def has_started(game: models.Game):
     helpers.send_room('game_start', {}, str(game.id))
 
 
-def get_game_state(game: models.Game) -> typing.Dict[str, typing.Any]:
+def assert_game_in_progress():
+    """Assert that the game an event was sent for is in progress.
+
+    Raises a request error if not.
+    """
+    game = flask.request.context.game
+    if game.ended_at or not game.started_at:
+        raise helpers.RequestError(2311)
+
+
+def get_game_state(game: models.Game) -> dict[str, typing.Any]:
     """Send the game state for an ongoing game."""
     pieces = models.Piece.select().where(models.Piece.game == game)
     board = {}
@@ -32,8 +42,8 @@ def get_game_state(game: models.Game) -> typing.Dict[str, typing.Any]:
     }
 
 
-def get_allowed_moves(game: models.Game) -> typing.Dict[str, typing.Any]:
-    """Get allowed moves for the user whos turn it is."""
+def get_allowed_moves(game: models.Game) -> dict[str, typing.Any]:
+    """Get allowed moves for the user whose turn it is."""
     moves = list(game.game_mode.possible_moves(game.current_turn))
     if game.other_valid_draw_claim:
         draw = game.other_valid_draw_claim.value
@@ -83,8 +93,7 @@ def game_state():
     This only includes displayable information, use allowed_moves for working
     out what moves are allowed.
     """
-    if not flask.request.context.game.started_at:
-        raise helpers.RequestError(2311)
+    assert_game_in_progress()
     helpers.send_user(
         'game_state', get_game_state(flask.request.context.game)
     )
@@ -96,18 +105,21 @@ def allowed_moves():
 
     Only allowed if it is your turn.
     """
+    assert_game_in_progress()
     game = flask.request.context.game
-    if not flask.request.context.game.started_at:
-        raise helpers.RequestError(2311)
     if flask.request.context.side != game.current_turn:
         raise helpers.RequestError(2312)
     helpers.send_user('allowed_moves', get_allowed_moves(game))
 
 
 @helpers.event('move')
-def move(move_data: typing.Dict[str, typing.Any]):
+def move(move_data: dict[str, typing.Any]):
     """Handle a move being made."""
+    assert_game_in_progress()
     game = flask.request.context.game
+    if datetime.datetime.now() >= game.timer.boundary:
+        end_game(game, models.Conclusion.TIME)
+        return
     if flask.request.context.side != game.current_turn:
         raise helpers.RequestError(2312)
     if not game.game_mode.make_move(**move_data):
@@ -140,8 +152,7 @@ def move(move_data: typing.Dict[str, typing.Any]):
 @helpers.event('offer_draw')
 def offer_draw():
     """Handle a user offering a draw."""
-    if not flask.request.context.game.started_at:
-        raise helpers.RequestError(2311)
+    assert_game_in_progress()
     if flask.request.context.side == models.Side.HOME:
         flask.request.context.game.home_offering_draw = True
     else:
@@ -169,9 +180,19 @@ def claim_draw(reason: models.Conclusion):
     end_game(ctx.game, reason)
 
 
+@helpers.event('timeout')
+def timeout():
+    """Handle a claim that the player on move has timed out."""
+    assert_game_in_progress()
+    if datetime.datetime.now() < flask.request.context.game.timer.boundary:
+        raise helpers.RequestError(2314)
+    end_game(flask.request.context.game, models.Conclusion.TIME)
+
+
 @helpers.event('resign')
 def resign():
     """Handle a user resigning from the game."""
+    assert_game_in_progress()
     if flask.request.context.game.current_turn != flask.request.context.side:
         # It is assumed that you can only lose on your turn.
         flask.request.context.game.turn_number += 1

@@ -73,7 +73,7 @@ def _validate_email(email: str):
 
 @endpoint('/accounts/login', method='POST', encrypt_request=True)
 def login(
-        username: str, password: str, token: bytes) -> typing.Dict[str, int]:
+        username: str, password: str, token: bytes) -> dict[str, int]:
     """Create a new authentication session."""
     if len(token) != 32:
         raise RequestError(1308)
@@ -160,7 +160,7 @@ def update_account(
 
 
 @endpoint('/accounts/me', method='GET')
-def get_own_account(user: models.User) -> typing.Dict[str, typing.Any]:
+def get_own_account(user: models.User) -> dict[str, typing.Any]:
     """Get the user's own account."""
     data = user.to_json()
     data['email'] = user.email
@@ -168,13 +168,13 @@ def get_own_account(user: models.User) -> typing.Dict[str, typing.Any]:
 
 
 @endpoint('/user/<account>', method='GET')
-def get_account(account: models.User) -> typing.Dict[str, typing.Any]:
+def get_account(account: models.User) -> dict[str, typing.Any]:
     """Get a user account."""
     return account.to_json()
 
 
 @endpoint('/accounts/account', method='GET')
-def get_account_by_id(id: int) -> typing.Dict[str, typing.Any]:
+def get_account_by_id(id: int) -> dict[str, typing.Any]:
     """Get a user account by ID."""
     try:
         account = models.User.get_by_id(id)
@@ -184,7 +184,7 @@ def get_account_by_id(id: int) -> typing.Dict[str, typing.Any]:
 
 
 @endpoint('/accounts/all', method='GET')
-def get_accounts(page: int = 0) -> typing.Dict[str, typing.Any]:
+def get_accounts(page: int = 0) -> dict[str, typing.Any]:
     """Get a paginated list of accounts."""
     users, pages = paginate(
         models.User.select().order_by(models.User.elo.desc()), page
@@ -211,6 +211,30 @@ def delete_account(user: models.User):
         ended_at=datetime.datetime.now()
     ).where(models.Game.away == user)
     user.delete_instance()
+
+
+@endpoint('/accounts/notifications', method='GET')
+def get_notifications(
+        user: models.User, page: int = 0) -> dict[str, typing.Any]:
+    """Get a paginated list of notifications for the user."""
+    query, pages = paginate(user.notifications, page)
+    unread = models.Notification.select().where(
+        models.Notification.user == user,
+        models.Notification.read == False    # noqa:E712
+    ).count()
+    return {
+        'notifications': [notif.to_json() for notif in query],
+        'unread_count': unread,
+        'pages': pages
+    }
+
+
+@endpoint('/accounts/notifications/ack/', method='POST')
+def acknowledge_notification(
+        user: models.User, notification: models.Notification):
+    """Mark a notification as read."""
+    notification.read = True
+    notification.save()
 
 
 @endpoint('/media/avatar/<avatar_name>', method='GET')

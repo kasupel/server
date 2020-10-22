@@ -25,7 +25,9 @@ from .. import config, models
 app = flask.Flask(__name__)
 
 
-errors_file = pathlib.Path(__file__).parent.absolute() / 'errors.json'
+errors_file = (
+    pathlib.Path(__file__).parent.parent.absolute() / 'res' / 'errors.json'
+)
 
 with open(errors_file) as f:
     ERROR_CODES = json.load(f)
@@ -47,7 +49,7 @@ class RequestError(Exception):
 
 def paginate(
         query: peewee.SelectQuery, page: int = 0,
-        per_page: int = 100) -> typing.Tuple[peewee.SelectQuery, int]:
+        per_page: int = 100) -> tuple[peewee.SelectQuery, int]:
     """Paginate the results of a query.
 
     Returns results and number of pages.
@@ -62,7 +64,7 @@ def paginate(
 
 
 def interpret_integrity_error(
-        error: peewee.IntegrityError) -> typing.Tuple[str, str]:
+        error: peewee.IntegrityError) -> tuple[str, str]:
     """Dissect an integrity error to see what went wrong.
 
     It seems like a bad way to do it but according to peewee's author it's
@@ -90,7 +92,7 @@ def is_wrong_arguments(error: TypeError, fun: typing.Callable) -> bool:
     ))
 
 
-def _decrypt_request(raw: bytes) -> typing.Dict[str, typing.Any]:
+def _decrypt_request(raw: bytes) -> dict[str, typing.Any]:
     """Decrypt a JSON object encrypted with our public key."""
     try:
         raw_json = config.PRIVATE_KEY.decrypt(
@@ -139,7 +141,7 @@ def validate_session_key(
 def _process_request(
         request: flask.Request, method: str,
         encrypt_request: bool,
-        require_verified_email: bool) -> typing.Dict[str, typing.Any]:
+        require_verified_email: bool) -> dict[str, typing.Any]:
     """Handle authentication and encryption."""
     if method in ('GET', 'DELETE'):
         data = dict(request.args)
@@ -191,7 +193,7 @@ def endpoint(
 
         @functools.wraps(main)
         def return_wrapped(
-                **kwargs: typing.Dict[str, typing.Any]) -> typing.Any:
+                **kwargs: dict[str, typing.Any]) -> typing.Any:
             """Handle errors and convert the response to JSON."""
             try:
                 data = _process_request(

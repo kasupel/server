@@ -14,6 +14,8 @@ with open(_config_file) as f:
 
 
 ELO_K_FACTOR = config.get('elo_k_factor', 32)
+TIMER_CHECK_INTERVAL = config.get('timer_check_interval', 60)    # seconds
+MAX_SESSION_AGE = config.get('max_session_age', 30)    # days
 
 
 DB_NAME = config['db_name']

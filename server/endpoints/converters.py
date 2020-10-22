@@ -30,7 +30,7 @@ def _bytes_converter(value: typing.Union[str, bytes]) -> bytes:
 
 
 def _dict_converter(
-        value: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
+        value: dict[str, typing.Any]) -> dict[str, typing.Any]:
     """Convert a dict (JSON) parameter.
 
     Does no actual conversion, only validation.
@@ -81,8 +81,8 @@ def _default_converter(
 
 
 def get_converters(
-        endpoint: typing.Callable) -> typing.Tuple[
-            bool, typing.Dict[str, typing.Callable]]:
+        endpoint: typing.Callable) -> tuple[
+            bool, dict[str, typing.Callable]]:
     """Detect the type hints used and provide converters for them."""
     converters = {}
     authenticated = False
@@ -137,7 +137,7 @@ def wrap(endpoint: typing.Callable) -> typing.Callable:
     authenticated, converters = get_converters(endpoint)
 
     @functools.wraps(endpoint)
-    def wrapped(**kwargs: typing.Dict[str, typing.Any]) -> typing.Any:
+    def wrapped(**kwargs: dict[str, typing.Any]) -> typing.Any:
         """Convert arguments before calling the endpoint."""
         if authenticated and not kwargs.get('user'):
             raise helpers.RequestError(1301)

@@ -7,7 +7,9 @@ import enum
 import functools
 import hashlib
 import hmac
+import json
 import os
+import pathlib
 import random
 import string
 import typing
@@ -16,7 +18,7 @@ import peewee as pw
 
 import playhouse.postgres_ext as pw_postgres
 
-from . import config, images, timing
+from . import config, events, images, timing
 from .endpoints import converters, helpers
 
 
@@ -161,7 +163,7 @@ class EnumField(pw.SmallIntegerField):
     """A field where each value is an integer representing an option."""
 
     def __init__(
-            self, options: enum.Enum, **kwargs: typing.Dict[str, typing.Any]):
+            self, options: enum.Enum, **kwargs: dict[str, typing.Any]):
         """Create a new enum field."""
         self.options = options
         super().__init__(**kwargs)
@@ -181,6 +183,18 @@ class EnumField(pw.SmallIntegerField):
             raise TypeError(f'Instance is not of enum class {self.options}.')
         number = instance.value
         return super().db_value(number)
+
+
+class JsonField(pw.CharField):
+    """A field to store JSON data."""
+
+    def python_value(self, raw: typing.Any) -> dict[str, typing.Any]:
+        """Convert a raw string to a python value."""
+        return json.loads(super().python_value(raw))
+
+    def db_value(self, instance: dict[str, typing.Any]) -> typing.Any:
+        """Convert a python value to a raw string."""
+        return super().db_value(json.dumps(instance))
 
 
 class BaseModel(pw.Model):
@@ -326,8 +340,24 @@ class User(BaseModel):
         else:
             self.email_verify_token = None
 
+    @property
+    def socket_id(self) -> str:
+        """Get the ID of a socket the user is connected to, if any."""
+        game = Game.get_or_none(
+            (
+                Game.host == self & Game.host_socket_id != None    # noqa:E711
+            ) | (
+                Game.away == self & Game.away_socket_id != None    # noqa:E711
+            )
+        )
+        if not game:
+            return
+        if game.host == self:
+            return game.host_socket_id
+        return game.away_socket_id
+
     def to_json(
-            self, hide_email: bool = True) -> typing.Dict[str, typing.Any]:
+            self, hide_email: bool = True) -> dict[str, typing.Any]:
         """Get a dict representation of this user."""
         response = {
             'id': self.id,
@@ -341,11 +371,55 @@ class User(BaseModel):
         return response
 
 
+class Notification(BaseModel):
+    """Represents a notification to be delivered to the user."""
+
+    _notification_type_file = (
+        pathlib.Path(__file__).parent.absolute()
+        / 'res' / 'notifications.json'
+    )
+    with open(_notification_type_file) as f:
+        NOTIFICATION_TYPES = json.load(f)
+
+    user = pw.ForeignKeyField(model=User, backref='notifications')
+    sent_at = pw.DateTimeField(default=datetime.datetime.now)
+    type_code = pw.SmallIntegerField()
+    values = JsonField()
+    read = pw.BooleanField(default=False)
+
+    class KasupelMeta:
+        """Set the "not found" error code and use username as key."""
+
+        not_found_error = 1401
+
+    @classmethod
+    def send(
+            cls, user: User, type_code: int, **values: dict[str, typing.Any]):
+        """Create a new notification."""
+        notif = cls.create(user=user, type_code=type_code, values=values)
+        if user.socket_id:
+            events.send_notification(user.socket_id, notif)
+
+    def display(self) -> str:
+        """Get the notification as it should be displayed to the user."""
+        fmt = self.NOTIFICATION_TYPES[str(self.type_code)]
+        return fmt.format(**self.values)
+
+    def to_json(self) -> dict[str, typing.Any]:
+        """Represent as a python dict."""
+        return {
+            'id': self.id,
+            'sent_at': self.sent_at.to_timestamp(),
+            'type_code': self.type_code,
+            'values': self.values,
+            'read': self.read
+        }
+
+
 class Session(BaseModel):
     """A model to represent an authentication session for a user."""
 
-    # FIXME: This is pretty arbitrary. What sort of time would make sense?
-    MAX_AGE = datetime.timedelta(days=30)
+    MAX_AGE = datetime.timedelta(days=config.MAX_SESSION_AGE)
 
     user = pw.ForeignKeyField(model=User, backref='sessions')
     token = pw.BlobField()
@@ -416,8 +490,8 @@ class Game(BaseModel):
         not_found_error = 2001
 
     def __init__(
-            self, *args: typing.Tuple[typing.Any],
-            **kwargs: typing.Dict[str, typing.Any]):
+            self, *args: tuple[typing.Any],
+            **kwargs: dict[str, typing.Any]):
         """Create a game."""
         super().__init__(*args, **kwargs)
         self.turn_number = TurnCounter(self)
@@ -443,7 +517,7 @@ class Game(BaseModel):
         """
         return gamemodes.GAMEMODES[self.mode - 1](self)
 
-    def to_json(self) -> typing.Dict[str, typing.Any]:
+    def to_json(self) -> dict[str, typing.Any]:
         """Get a dict representation of this game."""
         return {
             'id': self.id,

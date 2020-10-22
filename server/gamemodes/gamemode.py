@@ -17,12 +17,12 @@ class GameMode:
         """Put the pieces on the board."""
         raise NotImplementedError
 
-    def make_move(self, **move_data: typing.Dict[str, typing.Any]) -> bool:
+    def make_move(self, **move_data: dict[str, typing.Any]) -> bool:
         """Validate and apply a move."""
         raise NotImplementedError
 
     def possible_moves(self, side: models.Side) -> typing.Iterator[
-            typing.Tuple[models.Piece, int, int]]:
+            tuple[models.Piece, int, int]]:
         """Get all possible moves for a side."""
         raise NotImplementedError
 

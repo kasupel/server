@@ -42,6 +42,10 @@ Note that only the "Agreed draw", "threefold repetition" and "50 move rule" clai
 
 Resign from the game.
 
+### `timeout`
+
+Assert that the player whose turn it currently is has timed out. If they have, the player whose turn it is not will on time. This will be periodically checked, and late moves will not be accepted, but clients should send this event when relevant regardless.
+
 ## Server initiated events
 
 ### `game_disconnect`
@@ -100,3 +104,9 @@ Fields:
 - `draw_claim` ([optional](./types.md#optional-some-other-type) [`Conclusion` enum](./types.md#conclusion))
 
 Note `draw_claim` will only be "Agreed draw", "threefold repetition" or "50 move rule" (or [`null`](./types.md#null)).
+
+### `notification`
+
+Fields are the same as [a `Notification` object](./types.md#notification).
+
+Indicates that the user has received a new notification.
