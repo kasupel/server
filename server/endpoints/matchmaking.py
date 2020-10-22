@@ -1,6 +1,5 @@
 """Respond to and send socket API calls related to matchmaking."""
 import datetime
-import typing
 
 import peewee
 
@@ -14,7 +13,7 @@ def find_game(
         main_thinking_time: datetime.timedelta,
         fixed_extra_time: datetime.timedelta,
         time_increment_per_turn: datetime.timedelta,
-        mode: models.Mode) -> typing.Dict[str, int]:
+        mode: models.Mode) -> dict[str, int]:
     """Find a game matching parameters, or create one if not found."""
     try:
         game = models.Game.get(
@@ -46,7 +45,7 @@ def send_invitation(
         main_thinking_time: datetime.timedelta,
         fixed_extra_time: datetime.timedelta,
         time_increment_per_turn: datetime.timedelta,
-        mode: models.Mode) -> typing.Dict[str, int]:
+        mode: models.Mode) -> dict[str, int]:
     """Create a game which only a specific person may join."""
     if user == invitee:
         raise RequestError(2121)

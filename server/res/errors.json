@@ -28,6 +28,8 @@
         "1307": "Email address not verified.",
         "1308": "Session token must be 32 bytes long",
         "1309": "Invalid session ID.",
+    "1400": "Notifications error.",
+        "1401": "Notification not found.",
   "2000": "Games error.",
         "2001": "Game not found.",
     "2100": "Invitations error.",

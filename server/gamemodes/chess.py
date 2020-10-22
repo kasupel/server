@@ -126,8 +126,8 @@ class Chess(gamemode.GameMode):
 
     def hypothetical_check(
             self, side: models.Side,
-            *moves: typing.Tuple[
-                typing.Tuple[models.Piece, int, int, models.PieceType], ...
+            *moves: tuple[
+                tuple[models.Piece, int, int, models.PieceType], ...
             ]) -> bool:
         """Check if a series of moves would put a side in check."""
         if self.hypothetical_moves is not None:
@@ -408,7 +408,7 @@ class Chess(gamemode.GameMode):
             self.game.save()
 
     def possible_moves(self, side: models.Side) -> typing.Iterator[
-            typing.Tuple[models.Piece, int, int]]:
+            tuple[models.Piece, int, int]]:
         """Get all possible moves for a side."""
         pieces = models.Piece.select().where(
             models.Piece.side == side,

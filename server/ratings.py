@@ -1,6 +1,4 @@
 """Calculate ELO ratings."""
-import typing
-
 from .config import ELO_K_FACTOR
 from .models import Winner
 
@@ -26,7 +24,7 @@ def host_result_value(winner: Winner) -> float:
 
 def calculate(
         host_elo: int, away_elo: int,
-        winner: Winner) -> typing.Tuple[int, int]:
+        winner: Winner) -> tuple[int, int]:
     """Calculate the updated ELO after a match."""
     host_transformed = transformed_rating(host_elo)
     away_transformed = transformed_rating(away_elo)
