@@ -8,7 +8,7 @@ import typing
 
 import peewee
 
-from .helpers import endpoint, paginate
+from . import helpers
 from .. import models
 
 
@@ -41,7 +41,7 @@ def _get_list_of_games(
     ).where(
         *conditions
     )
-    query, pages = paginate(query, page)
+    query, pages = helpers.paginate(query, page)
     users = {}
     for game in query:
         dumped = game.to_json()
@@ -59,14 +59,14 @@ def _get_list_of_games(
     }
 
 
-@endpoint('/games/invites', method='GET')
+@helpers.endpoint('/games/invites', method='GET')
 def get_incoming_invites(
         user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get a list of incoming invites for a user."""
     return _get_list_of_games((models.Game.invited == user,), page)
 
 
-@endpoint('/games/searches', method='GET')
+@helpers.endpoint('/games/searches', method='GET')
 def get_outgoing_searches(
         user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get a list of game searches and outgoing invites for a user."""
@@ -78,7 +78,7 @@ def get_outgoing_searches(
     )
 
 
-@endpoint('/games/ongoing', method='GET')
+@helpers.endpoint('/games/ongoing', method='GET')
 def get_ongoing_games(
         user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get games a user is currently taking part in."""
@@ -91,7 +91,7 @@ def get_ongoing_games(
     )
 
 
-@endpoint('/games/completed', method='GET')
+@helpers.endpoint('/games/completed', method='GET')
 def get_completed_games(
         account: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get games a user has completed."""
@@ -103,7 +103,7 @@ def get_completed_games(
     )
 
 
-@endpoint('/games/common_completed', method='GET')
+@helpers.endpoint('/games/common_completed', method='GET')
 def get_common_completed_games(
         user: models.User, account: models.User,
         page: int = 0) -> dict[str, typing.Any]:
@@ -119,7 +119,7 @@ def get_common_completed_games(
     )
 
 
-@endpoint('/games/<int:game>', method='GET')
+@helpers.endpoint('/games/<int:game>', method='GET')
 def get_game(game: models.Game) -> dict[str, typing.Any]:
     """Get a game by ID."""
     return game.to_json()

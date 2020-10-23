@@ -5,8 +5,6 @@ import base64
 import datetime
 import enum
 import functools
-import hashlib
-import hmac
 import json
 import os
 import pathlib
@@ -18,25 +16,8 @@ import peewee as pw
 
 import playhouse.postgres_ext as pw_postgres
 
-from . import config, events, images, timing
+from . import config, enums, events, gamemodes, hashing, images, timing
 from .endpoints import converters, helpers
-
-
-def hash_password(password: str) -> str:
-    """Hash a password."""
-    salt = os.urandom(32)
-    key = hashlib.pbkdf2_hmac('sha3-256', password.encode(), salt, 100_000)
-    return salt + key
-
-
-def check_password(password: str, hashed: str) -> bool:
-    """Check a password against a hash."""
-    salt = hashed[:32]
-    key = hashed[32:]
-    attempt_key = hashlib.pbkdf2_hmac(
-        'sha3-256', password.encode(), salt, 100_000
-    )
-    return hmac.compare_digest(key, attempt_key)
 
 
 def generate_verification_token() -> str:
@@ -53,18 +34,6 @@ def generate_verification_token() -> str:
 db = pw_postgres.PostgresqlExtDatabase(
     config.DB_NAME, user=config.DB_USER, password=config.DB_PASSWORD
 )
-
-
-class HashedPassword:
-    """A class to check for equality against hashed passwords."""
-
-    def __init__(self, hashed_password: str):
-        """Store the hashed password."""
-        self.hashed_password = hashed_password
-
-    def __eq__(self, password: str) -> bool:
-        """Check for equality against an unhashed password."""
-        return check_password(password, self.hashed_password)
 
 
 class TurnCounter:
@@ -92,71 +61,19 @@ class TurnCounter:
         self.game._turn_number += 1
         self.game.timer.turn_end(self.game.current_turn)
         self.game.current_turn = ~self.game.current_turn
+        self.game.host_offering_draw = False
+        self.game.away_offering_draw = False
         arrangement = self.game.game_mode.freeze_game()
         GameState.create(
             game=self.game, turn_number=self.game._turn_number,
             arrangement=arrangement
         )
         self.game.save()
-
-
-class Mode(enum.Enum):
-    """An enum for a gamemode."""
-
-    CHESS = enum.auto()
-
-
-class Winner(enum.Enum):
-    """An enum for the winner of a game."""
-
-    GAME_NOT_COMPLETE = enum.auto()
-    HOME = enum.auto()
-    AWAY = enum.auto()
-    DRAW = enum.auto()
-
-
-class Conclusion(enum.Enum):
-    """An enum for the way a game finished."""
-
-    GAME_NOT_COMPLETE = enum.auto()
-    CHECKMATE = enum.auto()
-    RESIGN = enum.auto()
-    TIME = enum.auto()
-    STALEMATE = enum.auto()
-    THREEFOLD_REPETITION = enum.auto()
-    FIFTY_MOVE_RULE = enum.auto()
-    AGREED_DRAW = enum.auto()
-
-
-class PieceType(enum.Enum):
-    """An enum for a chess piece type."""
-
-    PAWN = enum.auto()
-    ROOK = enum.auto()
-    KNIGHT = enum.auto()
-    BISHOP = enum.auto()
-    QUEEN = enum.auto()
-    KING = enum.auto()
-
-
-class Side(enum.Enum):
-    """An enum for home/away."""
-
-    HOME = enum.auto()
-    AWAY = enum.auto()
-
-    def __invert__(self) -> Side:
-        """Get the other side."""
-        if self == Side.HOME:
-            return Side.AWAY
-        return Side.HOME
-
-    @property
-    def forwards(self) -> int:
-        """Return the direction that is forwards for this side."""
-        if self == Side.HOME:
-            return 1
-        return -1
+        if self.game.current_turn == enums.Side.HOST:
+            on_move = self.game.host
+        else:
+            on_move = self.game.away
+        Notification.send(on_move, 'games.ongoing.turn', self.game)
 
 
 class EnumField(pw.SmallIntegerField):
@@ -216,7 +133,7 @@ class BaseModel(pw.Model):
             if isinstance(values[field], datetime.datetime):
                 value = f"'{values[field]}'"
             elif isinstance(values[field], pw.Model):
-                value = values[field].__str__(indent=indent + 1)
+                value = values[field].__repr__(indent=indent + 1)
             elif isinstance(values[field], enum.Enum):
                 value = values[field].name
             else:
@@ -302,9 +219,9 @@ class User(BaseModel):
             return f'{self.id}-{self.avatar_number}.{self.avatar_extension}'
 
     @property
-    def password(self) -> HashedPassword:
+    def password(self) -> hashing.HashedPassword:
         """Return an object that will use hashing in it's equality check."""
-        return HashedPassword(self.password_hash)
+        return hashing.HashedPassword(self.password_hash)
 
     @password.setter
     def password(self, password: str):
@@ -312,7 +229,7 @@ class User(BaseModel):
 
         Also clears all sessions.
         """
-        self.password_hash = hash_password(password)
+        self.password_hash = hashing.hash_password(password)
         if self.id:    # Will be None on initialisation.
             Session.delete().where(Session.user == self).execute()
 
@@ -371,51 +288,6 @@ class User(BaseModel):
         return response
 
 
-class Notification(BaseModel):
-    """Represents a notification to be delivered to the user."""
-
-    _notification_type_file = (
-        pathlib.Path(__file__).parent.absolute()
-        / 'res' / 'notifications.json'
-    )
-    with open(_notification_type_file) as f:
-        NOTIFICATION_TYPES = json.load(f)
-
-    user = pw.ForeignKeyField(model=User, backref='notifications')
-    sent_at = pw.DateTimeField(default=datetime.datetime.now)
-    type_code = pw.SmallIntegerField()
-    values = JsonField()
-    read = pw.BooleanField(default=False)
-
-    class KasupelMeta:
-        """Set the "not found" error code and use username as key."""
-
-        not_found_error = 1401
-
-    @classmethod
-    def send(
-            cls, user: User, type_code: int, **values: dict[str, typing.Any]):
-        """Create a new notification."""
-        notif = cls.create(user=user, type_code=type_code, values=values)
-        if user.socket_id:
-            events.send_notification(user.socket_id, notif)
-
-    def display(self) -> str:
-        """Get the notification as it should be displayed to the user."""
-        fmt = self.NOTIFICATION_TYPES[str(self.type_code)]
-        return fmt.format(**self.values)
-
-    def to_json(self) -> dict[str, typing.Any]:
-        """Represent as a python dict."""
-        return {
-            'id': self.id,
-            'sent_at': self.sent_at.to_timestamp(),
-            'type_code': self.type_code,
-            'values': self.values,
-            'read': self.read
-        }
-
-
 class Session(BaseModel):
     """A model to represent an authentication session for a user."""
 
@@ -452,9 +324,9 @@ class Game(BaseModel):
     host = pw.ForeignKeyField(model=User, backref='host_games', null=True)
     away = pw.ForeignKeyField(model=User, backref='away_games', null=True)
     invited = pw.ForeignKeyField(model=User, backref='invites', null=True)
-    current_turn = EnumField(Side, default=Side.HOME)
+    current_turn = EnumField(enums.Side, default=enums.Side.HOST)
     _turn_number = pw.SmallIntegerField(default=1, column_name='turn_number')
-    mode = EnumField(Mode)
+    mode = EnumField(enums.Mode)
     last_kill_or_pawn_move = pw.SmallIntegerField(default=1)
 
     # initial timer value for each player
@@ -465,16 +337,16 @@ class Game(BaseModel):
     time_increment_per_turn = pw_postgres.IntervalField()
 
     # timers at the start of the current turn, null means main_thinking_time
-    home_time = pw_postgres.IntervalField(null=True)
+    host_time = pw_postgres.IntervalField(null=True)
     away_time = pw_postgres.IntervalField(null=True)
 
-    home_offering_draw = pw.BooleanField(default=False)
+    host_offering_draw = pw.BooleanField(default=False)
     away_offering_draw = pw.BooleanField(default=False)
-    other_valid_draw_claim = EnumField(Conclusion, null=True)
+    other_valid_draw_claim = EnumField(enums.Conclusion, null=True)
 
-    winner = EnumField(Winner, default=Winner.GAME_NOT_COMPLETE)
+    winner = EnumField(enums.Winner, default=enums.Winner.GAME_NOT_COMPLETE)
     conclusion_type = EnumField(
-        Conclusion, default=Conclusion.GAME_NOT_COMPLETE
+        enums.Conclusion, default=enums.Conclusion.GAME_NOT_COMPLETE
     )
     opened_at = pw.DateTimeField(default=datetime.datetime.now)
     last_turn = pw.DateTimeField(null=True)
@@ -495,7 +367,7 @@ class Game(BaseModel):
         """Create a game."""
         super().__init__(*args, **kwargs)
         self.turn_number = TurnCounter(self)
-        self.home_time = self.main_thinking_time
+        self.host_time = self.main_thinking_time
         self.away_time = self.main_thinking_time
         self.timer = timing.Timer(self)
 
@@ -532,13 +404,13 @@ class Game(BaseModel):
             'time_increment_per_turn': (
                 self.time_increment_per_turn.total_seconds()
             ),
-            'home_time': (
-                self.home_time or self.main_thinking_time
+            'host_time': (
+                self.host_time or self.main_thinking_time
             ).total_seconds(),
             'away_time': (
                 self.away_time or self.main_thinking_time
             ).total_seconds(),
-            'home_offering_draw': self.home_offering_draw,
+            'host_offering_draw': self.host_offering_draw,
             'away_offering_draw': self.away_offering_draw,
             'winner': self.winner.value,
             'conclusion_type': self.conclusion_type.value,
@@ -553,13 +425,70 @@ class Game(BaseModel):
         }
 
 
+class Notification(BaseModel):
+    """Represents a notification to be delivered to the user."""
+
+    _notification_type_file = (
+        pathlib.Path(__file__).parent.absolute()
+        / 'res' / 'notifications.json'
+    )
+    with open(_notification_type_file) as f:
+        NOTIFICATION_TYPES = json.load(f)
+
+    user = pw.ForeignKeyField(model=User, backref='notifications')
+    sent_at = pw.DateTimeField(default=datetime.datetime.now)
+    type_code = pw.CharField()
+    game = pw.ForeignKeyField(model=Game, null=True)
+    read = pw.BooleanField(default=False)
+
+    class KasupelMeta:
+        """Set the "not found" error code."""
+
+        not_found_error = 1401
+
+    @classmethod
+    def send(
+            cls, user: User, type_code: str, game: Game = None):
+        """Create a new notification."""
+        if game and user.socket_id in (
+                game.host_socket_id, game.away_socket_id):
+            # They are already connected to this game, so need to send them a
+            # notification.
+            return
+        notif = cls.create(user=user, type_code=type_code, game=game)
+        if user.socket_id:
+            events.send_notification(user.socket_id, notif)
+
+    def display(self) -> str:
+        """Get the notification as it should be displayed to the user."""
+        fmt = self.NOTIFICATION_TYPES[self.type_code]
+        details = {}
+        if self.game:
+            if self.user == self.game.host:
+                details['opponent'] = self.game.away
+            else:
+                details['opponent'] = self.game.host
+        return fmt.format(**details)
+
+    def to_json(self) -> dict[str, typing.Any]:
+        """Represent as a python dict."""
+        return {
+            'id': self.id,
+            'sent_at': self.sent_at.to_timestamp(),
+            'type_code': self.type_code,
+            'game': self.game.to_json() if self.game else None,
+            'message': self.display(),
+            'read': self.read
+        }
+
+
 class Piece(BaseModel):
     """A model to represent a piece in a game."""
 
-    piece_type = EnumField(PieceType)
+    piece_type = EnumField(enums.PieceType)
     rank = pw.SmallIntegerField()
     file = pw.SmallIntegerField()
-    side = EnumField(Side)
+    side = EnumField(enums.Side)
     has_moved = pw.BooleanField(default=False)
     first_move_last_turn = pw.BooleanField(default=False)    # For en passant
     game = pw.ForeignKeyField(model=Game, backref='pieces')
@@ -582,6 +511,3 @@ AwayUser = User.alias()
 InvitedUser = User.alias()
 
 db.create_tables([User, Session, Game, Piece, GameState])
-
-
-from . import gamemodes    # noqa: E402 - avoiding circular import

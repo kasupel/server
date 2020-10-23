@@ -90,7 +90,7 @@ An event containing the current state of the game. This is sent on connect (if t
 Fields:
 
 - `board` (a [`Board` object](./types.md#board))
-- `home_time` ([timedelta](./types.md#timedelta), time remaining on home's clock at `last_turn`)
+- `host_time` ([timedelta](./types.md#timedelta), time remaining on home's clock at `last_turn`)
 - `away_time` ([timedelta](./types.md#timedelta), time remaining on away's clock at `last_turn`)
 - `last_turn` ([date](./types.md#date), the time the last turn was taken)
 - `current_turn` ([`Side` enum](./types.md#side))

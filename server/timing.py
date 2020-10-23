@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime
 
-from . import config, events, models
+from . import config, enums, events, models
 
 
 def timer_loop():
@@ -13,26 +13,26 @@ def timer_loop():
         return
     while True:
         now = datetime.datetime.now()
-        games = models.Games.select().where(
+        games = models.Game.select().where(
             (
-                models.Game.current_turn == models.Side.HOME
-                & (
+                (models.Game.current_turn == enums.Side.HOST)
+                & ((
                     models.Game.last_turn
-                    + models.Game.home_time
+                    + models.Game.host_time
                     + models.Game.fixed_extra_time
-                ) > now
+                ) > now)
             ) | (
-                models.Game.current_turn == models.Side.AWAY
-                & (
+                (models.Game.current_turn == enums.Side.AWAY)
+                & ((
                     models.Game.last_turn
                     + models.Game.away_time
                     + models.Game.fixed_extra_time
-                ) > now
+                ) > now)
             )
         )
         for game in games:
             events.end_game(game)
-        events.socketio.sleep(config.TIMER_CHECK_INTERVAL)
+        events.helpers.socketio.sleep(config.TIMER_CHECK_INTERVAL)
 
 
 class Timer:
@@ -47,7 +47,7 @@ class Timer:
         """Store the game we are interested in."""
         self.game = game
 
-    def turn_end(self, side: models.Side):
+    def turn_end(self, side: enums.Side):
         """Increment timers for the end of a turn."""
         last_turn = self.game.last_turn
         current_time = datetime.datetime.now()
@@ -57,8 +57,8 @@ class Timer:
         else:
             main_time_used = datetime.timedelta(0)
         timer_delta = self.game.time_increment_per_turn - main_time_used
-        if side == models.Side.HOME:
-            self.game.home_time += timer_delta
+        if side == enums.Side.HOST:
+            self.game.host_time += timer_delta
         else:
             self.game.away_time += timer_delta
         self.game.last_turn = current_time
@@ -67,8 +67,8 @@ class Timer:
     def boundary(self) -> datetime.datetime:
         """Return the time the current player will run out of time."""
         current_timer = (
-            self.game.home_time
-            if self.game.current_turn == models.Side.HOME
+            self.game.host_time
+            if self.game.current_turn == enums.Side.HOST
             else self.game.away_time
         )
         return (

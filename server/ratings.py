@@ -1,6 +1,6 @@
 """Calculate ELO ratings."""
+from . import enums
 from .config import ELO_K_FACTOR
-from .models import Winner
 
 
 def transformed_rating(elo: int) -> int:
@@ -13,18 +13,18 @@ def updated_rating(old: int, expected: int, actual: int) -> int:
     return round(old + ELO_K_FACTOR * (actual - expected))
 
 
-def host_result_value(winner: Winner) -> float:
+def host_result_value(winner: enums.Winner) -> float:
     """Get the "actual" result for the host."""
-    if winner == Winner.HOME:
+    if winner == enums.Winner.HOST:
         return 1
-    if winner == Winner.AWAY:
+    if winner == enums.Winner.AWAY:
         return 0
     return 0.5
 
 
 def calculate(
         host_elo: int, away_elo: int,
-        winner: Winner) -> tuple[int, int]:
+        winner: enums.Winner) -> tuple[int, int]:
     """Calculate the updated ELO after a match."""
     host_transformed = transformed_rating(host_elo)
     away_transformed = transformed_rating(away_elo)

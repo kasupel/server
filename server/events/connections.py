@@ -1,26 +1,16 @@
 """Handle connect and disconnect events."""
-import enum
-
 import flask
 
 import flask_socketio as sockets
 
 from . import games, helpers
-from .. import models
-from ..endpoints.helpers import validate_session_key
+from .. import enums, models
+from ..endpoints import helpers as endpoint_helpers
 
 
-class DisconnectReason(enum.Enum):
-    """Enumeration for the reason of a socket disconnect."""
-
-    INVITE_DECLINED = enum.auto()
-    NEW_CONNECTION = enum.auto()
-    GAME_OVER = enum.auto()
-
-
-def disconnect(socket_id: str, reason: DisconnectReason):
+def disconnect(socket_id: str, reason: enums.DisconnectReason):
     """Disconnect a user from a socket."""
-    helpers.send_room('game_disconnect', {'reason': reason}, socket_id)
+    helpers.send_room('game_disconnect', {'reason': reason.value}, socket_id)
     sockets.disconnect(socket_id)
 
 
@@ -41,7 +31,7 @@ def parse_connect_headers() -> tuple[models.Session, models.Game]:
         session_id, session_token = auth_key.split('|')
     except ValueError:
         raise helpers.RequestError(3413)
-    session = validate_session_key(session_id, session_token)
+    session = endpoint_helpers.validate_session_key(session_id, session_token)
     # Parse the game ID header.
     game_id = flask.request.headers.get('Game-ID')
     if not game_id:
@@ -67,15 +57,15 @@ def connect():
         game.away_socket_id = flask.request.sid
     if old_socket:
         # There is an existing connection for the same user.
-        disconnect(old_socket, DisconnectReason.NEW_CONNECTION)
+        disconnect(old_socket, enums.DisconnectReason.NEW_CONNECTION)
     sockets.join_room(str(game.id))
     if game.started_at:
         helpers.send_user('game_state', games.get_game_state(game))
     is_currently_turn = (
-        (game.home == session.user and game.current_turn == models.Side.HOME)
+        (game.host == session.user and game.current_turn == enums.Side.HOST)
         or (
             game.away == session.user
-            and game.current_turn == models.Side.AWAY
+            and game.current_turn == enums.Side.AWAY
         )
     ) and game.started_at
     if is_currently_turn:
