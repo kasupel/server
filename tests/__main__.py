@@ -18,6 +18,7 @@ cov.start()
 # Import the tests (these import the server module so must be imported after
 # we have added it to PATH and set up the coverage monitor).
 from .test_ratings import TestRatings
+from .test_images import TestImages
 
 # Run the tests.
 unittest.main(exit=False)

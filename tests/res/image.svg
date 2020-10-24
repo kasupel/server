@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg"
+    width="1300pt"
+    height="1300pt"
+    viewBox="0 0 1300 1300">
+<defs/>
+<path
+    id="base-left" fill="#0e0e0e"
+    d="M350 949 l0 -100 300 50 0 100 Z"
+/>
+<path
+    id="base-right" fill="#3e3e3e"
+    d="M949 949 l0 -100 -300 50 0 100 Z"
+/>
+<path
+    id="base-top" fill="#272727"
+    d="M350 850 l300 -50 300 50 -300 50 Z"
+/>
+<path
+    id="tower-left" fill="#0e0e0e"
+    d="M470 850 l0 -400 180 30 0 400 Z"
+/>
+<path
+    id="tower-right" fill="#3e3e3e"
+    d="M829 850 l0 -400 -180 30 0 400 Z"
+/>
+<path
+    id="castle-left-shadow" fill="#000000"
+    d="M470 450 l0 20 180 30 0 -20 Z"
+/>
+<path
+    id="castle-right-shadow" fill="#2e2e2e"
+    d="M829 450 l0 20 -180 30 0 -20 Z"
+/>
+<path
+    id="battlements-top-fill" fill="#373737"
+    d="M410 345 l240 -36 240 36 -240 36 Z"
+/>
+<path
+    id="castle-left-back" fill="#000000"
+    d="M747 289 l-48 -7 0 50 48 7 Z m-96 -14 l-48 -7 0 50 48 7 Z m-96 14 l-48 -7 0 28 48 7 Z"
+/>
+<path
+    id="castle-right-back" fill="#1e1e1e"
+    d="M554 288 l48 -7 0 50 -48 7 Z m96 -14 l48 -7 0 50 -48 7 Z m96 14 l48 -7 0 28 -48 7 Z"
+/>
+<path
+    id="castle-left" fill="#0e0e0e"
+    d="M410 445 l0 -150 48 7 0 50 48 7 0 -50 48 7 0 50 48 7 0 -50 48 7 0 150 Z M842 302 l-48 -7 0 50 48 7 Z m-96 14 l-48 -7 0 50 48 7 Z"
+/>
+<path
+    id="castle-right" fill="#3e3e3e"
+    d="M889 445 l0 -150 -48 7 0 50 -48 7 0 -50 -48 7 0 50 -48 7 0 -50 -48 7 0 150 Z M458 302 l48 -7 0 50 -48 7 Z m96 14 l48 -7 0 50 -48 7 Z"
+/>
+<path
+    id="castle-top" fill="#272727"
+    d="M409 296 l48 -7 48 7 -48 7 Z m96 14 l48 -7 48 6 -48 8 Z m96 14 l48 -7 48 6 -48 8 Z m96 -14 l48 -7 48 6 -48 8 Z m96 -14 l48 -7 48 6 -48 8 Z m-96 -14 l48 -7 48 6 -48 8 Z m-96 -14 l48 -7 48 6 -48 8 Z m-96 14 l48 -7 48 6 -48 8 Z"
+/>
+</svg>

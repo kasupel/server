@@ -12,9 +12,9 @@ def validate(raw: bytes) -> str:
 
     Returns the file extension.
     """
-    if len(raw) > 2 ^ 20:    # 1 MB
-        raise helpers.RequestError(3115)
+    if len(raw) > 2 ** 20:    # 1 MB
+        raise helpers.RequestError(3116)
     format_ = imghdr.what(None, h=raw)
     if format_ not in ALLOWED_FORMATS:
-        raise helpers.RequestError(3116)
+        raise helpers.RequestError(3115)
     return format_
