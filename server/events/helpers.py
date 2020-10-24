@@ -7,7 +7,7 @@ import flask
 
 import flask_socketio as sockets
 
-from .. import models
+from .. import enums, models
 from ..endpoints import converters
 from ..endpoints.helpers import RequestError, app
 
@@ -18,30 +18,27 @@ socketio = sockets.SocketIO(app)
 class EventContext:
     """Information to be stored during handling of an event."""
 
-    def __init__(
-            self, game: models.Game, side: models.Side, user: models.User):
+    def __init__(self):
         """Store the initial data."""
+        sid = flask.request.sid
+        game = models.Game.get_or_none(models.Game.host_socket_id == sid)
+        if game:
+            side = enums.Side.HOST
+            user = game.host
+            opponent = game.away
+        else:
+            game = models.Game.get_or_none(
+                models.Game.away_socket_id == sid
+            )
+            side = enums.Side.AWAY
+            user = game.away
+            opponent = game.host
+            if not game:
+                raise RequestError(4101)
         self.game = game
         self.side = side
         self.user = user
-
-
-def get_context() -> EventContext:
-    """Get context for this socket."""
-    sid = flask.request.sid
-    game = models.Game.get_or_none(models.Game.host_socket_id == sid)
-    if game:
-        side = models.Side.HOME
-        user = game.host
-    else:
-        game = models.Game.get_or_none(
-            models.Game.away_socket_id == sid
-        )
-        side = models.Side.AWAY
-        user = game.away
-        if not game:
-            raise RequestError(4101)
-    return EventContext(game, side, user)
+        self.opponent = opponent
 
 
 def send_room(name: str, data: dict[str, typing.Any], room: str):
@@ -65,11 +62,18 @@ def send_game(name: str, data: dict[str, typing.Any]):
 
 def send_opponent(name: str, data: dict[str, typing.Any]):
     """Send an event to the opponent of the currently connected user."""
-    if flask.request.context.side == models.Side.HOME:
+    if flask.request.context.side == enums.Side.HOST:
         socket = flask.request.context.game.away_socket_id
     else:
         socket = flask.request.context.game.host_socket_id
     send_room(name, data, socket)
+
+
+def send_opponent_notification(notification_code: str):
+    """Send a notification to the opponent in the current game."""
+    models.Notification.send(
+        flask.request.context.opponent, notification_code
+    )
 
 
 def event(name: str) -> typing.Callable:
@@ -84,7 +88,7 @@ def event(name: str) -> typing.Callable:
                 **kwargs: dict[str, typing.Any]) -> typing.Any:
             """Handle errors and convert the response to JSON."""
             try:
-                flask.request.context = get_context()
+                flask.request.context = EventContext()
                 converter_wrapped(**kwargs)
             except RequestError as error:
                 if name == 'connect':

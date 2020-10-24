@@ -66,9 +66,9 @@ Fields:
 - `main_thinking_time` ([timedelta](#timedelta))
 - `fixed_extra_time` ([timedelta](#timedelta))
 - `time_increment_per_turn` ([timedelta](#timedelta))
-- `home_time` ([timedelta](#timedelta), the time left on the home clock)
+- `host_time` ([timedelta](#timedelta), the time left on the home clock)
 - `away_time` ([timedelta](#timedelta), the time left on the away clock)
-- `home_offering_draw` ([boolean](#boolean))
+- `host_offering_draw` ([boolean](#boolean))
 - `away_offering_draw` ([boolean](#boolean))
 - `winner` ([`Winner` enum](#winner))
 - `conclusion_type` ([`Conclusion` enum](#conclusion))
@@ -121,9 +121,12 @@ Fields:
 
 - `id` ([integer](#integer))
 - `sent_at` ([date](#date))
-- `type_code` ([integer](#integer))
-- `values` ([JSON object](#object) with [string](#string) attributes)
+- `type_code` ([string](#string))
+- `game` ([optional](#optional-some-other-type) [Game object](#game))
+- `message` ([string](#string))
 - `read` ([boolean](#boolean))
+
+Note that the `message` is just an example (English) message that could be displayed to the user. Implementations are encouraged to provide their own messages, which may be localised.
 
 TODO: Add documentation of type codes.
 
@@ -146,7 +149,7 @@ The winner of a game.
 Values:
 
 - `1`: Game not complete
-- `2`: Home
+- `2`: Host
 - `3`: Away
 - `4`: Draw
 
@@ -184,7 +187,7 @@ One of the sides of a game.
 
 Values:
 
-- `1`: Home
+- `1`: Host
 - `2`: Away
 
 ### DisconnectReason

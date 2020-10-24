@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import typing
 
-from .. import models
+from .. import enums, models
 
 
 class GameMode:
@@ -21,12 +21,12 @@ class GameMode:
         """Validate and apply a move."""
         raise NotImplementedError
 
-    def possible_moves(self, side: models.Side) -> typing.Iterator[
+    def possible_moves(self, side: enums.Side) -> typing.Iterator[
             tuple[models.Piece, int, int]]:
         """Get all possible moves for a side."""
         raise NotImplementedError
 
-    def game_is_over(self) -> models.Conclusion:
+    def game_is_over(self) -> enums.Conclusion:
         """Check if the game has been won or tied.
 
         If the return value is checkmate, the player whos turn it currently

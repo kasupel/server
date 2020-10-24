@@ -6,7 +6,7 @@ import typing
 import peewee
 
 from . import gamemode
-from .. import models
+from .. import enums, models
 from ..endpoints import converters
 
 
@@ -15,7 +15,7 @@ class MockPiece:
 
     def __init__(
             self, base: models.Piece, rank: int, file: int,
-            p_type: models.PieceType):
+            p_type: enums.PieceType):
         """Create the mock piece."""
         self.rank = rank
         self.file = file
@@ -35,7 +35,7 @@ class Chess(gamemode.GameMode):
 
     def layout_board(self):
         """Put the pieces on the board."""
-        p = models.PieceType
+        p = enums.PieceType
         back_row = [
             p.ROOK, p.KNIGHT, p.BISHOP, p.QUEEN, p.KING, p.BISHOP, p.KNIGHT,
             p.ROOK
@@ -43,19 +43,19 @@ class Chess(gamemode.GameMode):
         for file, piece_type in enumerate(back_row):
             models.Piece.create(
                 piece_type=piece_type, rank=0, file=file,
-                side=models.Side.HOME, game=self.game
+                side=enums.Side.HOST, game=self.game
             )
             models.Piece.create(
                 piece_type=piece_type, rank=7, file=file,
-                side=models.Side.AWAY, game=self.game
+                side=enums.Side.AWAY, game=self.game
             )
         for file in range(8):
             models.Piece.create(
-                piece_type=p.PAWN, rank=1, file=file, side=models.Side.HOME,
+                piece_type=p.PAWN, rank=1, file=file, side=enums.Side.HOST,
                 game=self.game
             )
             models.Piece.create(
-                piece_type=p.PAWN, rank=6, file=file, side=models.Side.AWAY,
+                piece_type=p.PAWN, rank=6, file=file, side=enums.Side.AWAY,
                 game=self.game
             )
 
@@ -125,9 +125,9 @@ class Chess(gamemode.GameMode):
                 break
 
     def hypothetical_check(
-            self, side: models.Side,
+            self, side: enums.Side,
             *moves: tuple[
-                tuple[models.Piece, int, int, models.PieceType], ...
+                tuple[models.Piece, int, int, enums.PieceType], ...
             ]) -> bool:
         """Check if a series of moves would put a side in check."""
         if self.hypothetical_moves is not None:
@@ -135,7 +135,7 @@ class Chess(gamemode.GameMode):
         self.hypothetical_moves = moves    # self.get_piece will observe this
         king = models.Piece.get(
             models.Piece.side == side,
-            models.Piece.piece_type == models.PieceType.KING,
+            models.Piece.piece_type == enums.PieceType.KING,
             models.Piece.game == self.game
         )
         enemies = models.Piece.select().where(
@@ -155,7 +155,7 @@ class Chess(gamemode.GameMode):
 
     def validate_pawn_move(
             self, pawn: models.Piece, rank: int, file: int,
-            promotion: models.PieceType = None,
+            promotion: enums.PieceType = None,
             validate_promotion: bool = True) -> bool:
         """Validate a pawn's move."""
         absolute_file_delta = abs(file - pawn.file)
@@ -164,11 +164,11 @@ class Chess(gamemode.GameMode):
             return False
         elif relative_rank_delta == 1:
             if validate_promotion:
-                if rank == (7 if pawn.side == models.Side.HOME else 0):
+                if rank == (7 if pawn.side == enums.Side.HOST else 0):
                     if not promotion:
                         return False
                     if promotion in (
-                            models.PieceType.PAWN, models.PieceType.KING):
+                            enums.PieceType.PAWN, enums.PieceType.KING):
                         return False
                 else:
                     if promotion:
@@ -182,7 +182,7 @@ class Chess(gamemode.GameMode):
                     en_passant_pawn and en_passant_pawn.side != pawn.side
                     and en_passant_pawn.first_move_last_turn
                     and pawn.rank == (
-                        4 if pawn.side == models.Side.HOME else 3
+                        4 if pawn.side == enums.Side.HOST else 3
                     )
                 )
                 return (
@@ -206,10 +206,10 @@ class Chess(gamemode.GameMode):
         """Get all possible moves for a pawn."""
         options = ((1, 0), (2, 0), (1, -1), (1, 1))
         promotion_pieces = (
-            models.PieceType.ROOK, models.PieceType.KNIGHT,
-            models.PieceType.BISHOP, models.PieceType.QUEEN
+            enums.PieceType.ROOK, enums.PieceType.KNIGHT,
+            enums.PieceType.BISHOP, enums.PieceType.QUEEN
         )
-        promotion_rank = 7 if pawn.side == models.Side.HOME else 0
+        promotion_rank = 7 if pawn.side == enums.Side.HOST else 0
         for absolute_rank_delta, file_delta in options:
             rank = pawn.rank + absolute_rank_delta * pawn.side.forwards
             file = pawn.file + file_delta
@@ -356,7 +356,7 @@ class Chess(gamemode.GameMode):
 
     def validate_move(
             self, start_rank: int, start_file: int, end_rank: int,
-            end_file: int, promotion: models.PieceType = None,
+            end_file: int, promotion: enums.PieceType = None,
             check_allowed: bool = False) -> bool:
         """Validate a move, without first converting the parameters."""
         if start_file == end_file and start_rank == end_rank:
@@ -367,14 +367,14 @@ class Chess(gamemode.GameMode):
         if not self.on_board(end_rank, end_file):
             return False
         validators = {
-            models.PieceType.PAWN: (
+            enums.PieceType.PAWN: (
                 lambda *args: self.validate_pawn_move(*args, promotion)
             ),
-            models.PieceType.ROOK: self.validate_rook_move,
-            models.PieceType.KNIGHT: self.validate_knight_move,
-            models.PieceType.BISHOP: self.validate_bishop_move,
-            models.PieceType.QUEEN: self.validate_queen_move,
-            models.PieceType.KING: self.validate_king_move
+            enums.PieceType.ROOK: self.validate_rook_move,
+            enums.PieceType.KNIGHT: self.validate_knight_move,
+            enums.PieceType.BISHOP: self.validate_bishop_move,
+            enums.PieceType.QUEEN: self.validate_queen_move,
+            enums.PieceType.KING: self.validate_king_move
         }
         if not validators[piece.piece_type](piece, end_rank, end_file):
             return False
@@ -385,7 +385,7 @@ class Chess(gamemode.GameMode):
     @converters.wrap
     def make_move(
             self, start_rank: int, start_file: int, end_rank: int,
-            end_file: int, promotion: models.PieceType = None) -> bool:
+            end_file: int, promotion: enums.PieceType = None) -> bool:
         """Validate and apply move."""
         valid = self.validate_move(
             start_rank, start_file, end_rank, end_file, promotion
@@ -403,11 +403,11 @@ class Chess(gamemode.GameMode):
         target = self.get_piece(end_rank, end_file)
         if target:
             target.delete_instance()
-        if target or piece.piece_type == models.PieceType.PAWN:
+        if target or piece.piece_type == enums.PieceType.PAWN:
             self.game.last_kill_or_pawn_move = int(self.game.turn_number)
             self.game.save()
 
-    def possible_moves(self, side: models.Side) -> typing.Iterator[
+    def possible_moves(self, side: enums.Side) -> typing.Iterator[
             tuple[models.Piece, int, int]]:
         """Get all possible moves for a side."""
         pieces = models.Piece.select().where(
@@ -415,12 +415,12 @@ class Chess(gamemode.GameMode):
             models.Piece.game == self.game
         )
         move_generators = {
-            models.PieceType.PAWN: self.get_pawn_moves,
-            models.PieceType.ROOK: self.get_rook_moves,
-            models.PieceType.KNIGHT: self.get_knight_moves,
-            models.PieceType.BISHOP: self.get_bishop_moves,
-            models.PieceType.QUEEN: self.get_queen_moves,
-            models.PieceType.KING: self.get_king_moves
+            enums.PieceType.PAWN: self.get_pawn_moves,
+            enums.PieceType.ROOK: self.get_rook_moves,
+            enums.PieceType.KNIGHT: self.get_knight_moves,
+            enums.PieceType.BISHOP: self.get_bishop_moves,
+            enums.PieceType.QUEEN: self.get_queen_moves,
+            enums.PieceType.KING: self.get_king_moves
         }
         for piece in pieces:
             for move in move_generators[piece.piece_type](piece):
@@ -436,7 +436,7 @@ class Chess(gamemode.GameMode):
                         'promotion': move[4]
                     }
 
-    def game_is_over(self) -> models.Conclusion:
+    def game_is_over(self) -> enums.Conclusion:
         """Check if the game has been won or tied.
 
         If the return value is checkmate, the player whos turn it currently
@@ -454,15 +454,15 @@ class Chess(gamemode.GameMode):
             models.GameState.arrangement == current_state.arrangement
         )
         if len(list(identical_states)) >= 3:
-            return models.Conclusion.THREEFOLD_REPETITION
+            return enums.Conclusion.THREEFOLD_REPETITION
         if self.game.turn_number >= self.game.last_kill_or_pawn_move + 50:
-            return models.Conclusion.FIFTY_MOVE_RULE
+            return enums.Conclusion.FIFTY_MOVE_RULE
         moves_available = list(self.possible_moves(self.game.current_turn))
         if moves_available:
-            return models.Conclusion.GAME_NOT_COMPLETE
+            return enums.Conclusion.GAME_NOT_COMPLETE
         if self.hypothetical_check(self.game.current_turn):
-            return models.Conclusion.CHECKMATE
-        return models.Conclusion.STALEMATE
+            return enums.Conclusion.CHECKMATE
+        return enums.Conclusion.STALEMATE
 
     def freeze_game(self) -> str:
         """Store a snapshot of a game as a string."""
@@ -477,7 +477,7 @@ class Chess(gamemode.GameMode):
             king = models.Piece.get(
                 models.Piece.game == self.game,
                 models.Piece.side == side,
-                models.Piece.piece_type == models.PieceType.KING
+                models.Piece.piece_type == enums.PieceType.KING
             )
             if not king.has_moved:
                 for file_direction in (-2, 2):
@@ -485,19 +485,19 @@ class Chess(gamemode.GameMode):
                     if self.validate_king_move(king, king.rank, file):
                         castling_options.append((king.id, file_direction))
         for piece in pieces:
-            if piece.piece_type == models.PieceType.KNIGHT:
+            if piece.piece_type == enums.PieceType.KNIGHT:
                 abbrev = 'n'
             else:
                 abbrev = piece.piece_type.name[0]
-            if piece.side == models.Side.HOME:
+            if piece.side == enums.Side.HOST:
                 abbrev = abbrev.upper()
             arrangement += (
                 abbrev + str(models.Piece.rank) + str(models.Piece.file)
             )
-            if piece.piece_type == models.PieceType.PAWN:
+            if piece.piece_type == enums.PieceType.PAWN:
                 if piece.first_move_last_turn:
                     arrangement += 'X'
-            elif piece.piece_type == models.PieceType.KING:
+            elif piece.piece_type == enums.PieceType.KING:
                 if (piece.id, -2) in castling_options:
                     arrangement += 'X'
                 if (piece.id, 2) in castling_options:

@@ -3,17 +3,17 @@ import datetime
 
 import peewee
 
-from .helpers import RequestError, endpoint
-from .. import events, models
+from . import helpers
+from .. import enums, events, models
 
 
-@endpoint('/games/find', method='POST', require_verified_email=True)
+@helpers.endpoint('/games/find', method='POST', require_verified_email=True)
 def find_game(
         user: models.User,
         main_thinking_time: datetime.timedelta,
         fixed_extra_time: datetime.timedelta,
         time_increment_per_turn: datetime.timedelta,
-        mode: models.Mode) -> dict[str, int]:
+        mode: enums.Mode) -> dict[str, int]:
     """Find a game matching parameters, or create one if not found."""
     try:
         game = models.Game.get(
@@ -32,51 +32,59 @@ def find_game(
         )
     else:
         game.start_game(user)
+        models.Notification.send(game.host, 'matchmaking.match_found', game)
         events.has_started(game)
     return {
         'game_id': game.id
     }
 
 
-@endpoint('/games/send_invitation', method='POST', require_verified_email=True)
+@helpers.endpoint(
+    '/games/send_invitation', method='POST', require_verified_email=True
+)
 def send_invitation(
         user: models.User,
         invitee: models.User,
         main_thinking_time: datetime.timedelta,
         fixed_extra_time: datetime.timedelta,
         time_increment_per_turn: datetime.timedelta,
-        mode: models.Mode) -> dict[str, int]:
+        mode: enums.Mode) -> dict[str, int]:
     """Create a game which only a specific person may join."""
     if user == invitee:
-        raise RequestError(2121)
+        raise helpers.RequestError(2121)
     game = models.Game.create(
         host=user, invited=invitee, mode=mode,
         main_thinking_time=main_thinking_time,
         fixed_extra_time=fixed_extra_time,
         time_increment_per_turn=time_increment_per_turn
     )
+    models.Notification.send(invitee, 'matchmaking.invite_received', game)
     return {
         'game_id': game.id
     }
 
 
-@endpoint('/games/invites/<game>', method='POST', require_verified_email=True)
+@helpers.endpoint(
+    '/games/invites/<game>', method='POST', require_verified_email=True
+)
 def accept_invitation(user: models.User, game: models.Game):
     """Accept a game you have been invited to."""
     if game.invited != user:
-        raise RequestError(2111)
+        raise helpers.RequestError(2111)
     game.start_game(user)
+    models.Notification.send(game.host, 'matchmaking.invite_accepted', game)
     events.has_started(game)
 
 
-@endpoint('/games/invites/<game>', method='DELETE')
+@helpers.endpoint('/games/invites/<game>', method='DELETE')
 def decline_invitation(user: models.User, game: models.Game):
     """Decline a game you have been invited to."""
     if game.invited != user:
-        raise RequestError(2111)
+        raise helpers.RequestError(2111)
     if game.host_socket_id:
         events.disconnect(
             game.host_socket_id,
-            reason=events.DisconnectReason.INVITE_DECLINED
+            reason=enums.DisconnectReason.INVITE_DECLINED
         )
+    models.Notification.send(game.host, 'matchmaking.invite_declined', game)
     game.delete_instance()

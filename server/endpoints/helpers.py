@@ -55,7 +55,6 @@ def paginate(
     Returns results and number of pages.
     """
     total_results = query.count()
-    print(total_results, page)
     pages = math.ceil(total_results / per_page)
     if pages and page >= pages:
         raise RequestError(3201)

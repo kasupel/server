@@ -4,6 +4,7 @@ import datetime
 import enum
 import functools
 import inspect
+import types
 import typing
 
 import peewee
@@ -104,7 +105,7 @@ def get_converters(
             # will be strings.
             type_hint = eval(type_hint, endpoint.__globals__)
         is_class = inspect.isclass(type_hint)
-        is_generic = isinstance(type_hint, typing._GenericAlias)
+        is_generic = isinstance(type_hint, types.GenericAlias)
         if type_hint == str:
             converter = str
         elif type_hint == int:

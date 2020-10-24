@@ -13,10 +13,8 @@ import peewee
 
 import requests
 
-from .helpers import (
-    RequestError, endpoint, interpret_integrity_error, paginate
-)
-from .. import emails, models
+from . import helpers
+from .. import emails, enums, models
 
 
 def _validate_username(username: str):
@@ -25,9 +23,9 @@ def _validate_username(username: str):
     This does not enforce uniqueness.
     """
     if not username:
-        raise RequestError(1112)
+        raise helpers.RequestError(1112)
     elif len(username) > 32:
-        raise RequestError(1111)
+        raise helpers.RequestError(1111)
 
 
 def _validate_password(password: str):
@@ -36,11 +34,11 @@ def _validate_password(password: str):
     Also checks against the haveibeenpwned.com database.
     """
     if len(password) < 10:
-        raise RequestError(1121)
+        raise helpers.RequestError(1121)
     if len(password) > 32:
-        raise RequestError(1122)
+        raise helpers.RequestError(1122)
     if len(set(password)) < 6:
-        raise RequestError(1123)
+        raise helpers.RequestError(1123)
     sha1_hash = hashlib.sha1(password.encode()).hexdigest().upper()
     hash_range = sha1_hash[:5]
     resp = requests.get(
@@ -51,43 +49,43 @@ def _validate_password(password: str):
         if line:
             hash_suffix, count = line.split(':')
             if int(count) and hash_range + hash_suffix == sha1_hash:
-                raise RequestError(1124)
+                raise helpers.RequestError(1124)
 
 
 def _validate_email(email: str):
     """Validate that an email is of a valid format.
 
-    Does not validate that the address actualy exists/is in use.
+    Does not validate that the address actually exists/is in use.
     Doesn't actually come close to validating that the email address, that is
     not very necessary though.
     """
     if len(email) > 255:
-        raise RequestError(1130)
+        raise helpers.RequestError(1130)
     parts = email.split('@')
     if len(parts) < 2:
-        raise RequestError(1131)
+        raise helpers.RequestError(1131)
     if len(parts) > 2:
         if not (parts[0].startswith('"') and parts[-2].endswith('"')):
-            raise RequestError(1131)
+            raise helpers.RequestError(1131)
 
 
-@endpoint('/accounts/login', method='POST', encrypt_request=True)
+@helpers.endpoint('/accounts/login', method='POST', encrypt_request=True)
 def login(
         username: str, password: str, token: bytes) -> dict[str, int]:
     """Create a new authentication session."""
     if len(token) != 32:
-        raise RequestError(1308)
+        raise helpers.RequestError(1308)
     session = models.User.login(username, password, token)
     return {'session_id': session.id}
 
 
-@endpoint('/accounts/logout', method='GET')
+@helpers.endpoint('/accounts/logout', method='GET')
 def logout(user: models.User):
     """Create a new authentication session."""
     flask.request.session.delete_instance()
 
 
-@endpoint('/accounts/create', method='POST', encrypt_request=True)
+@helpers.endpoint('/accounts/create', method='POST', encrypt_request=True)
 def create_account(username: str, password: str, email: str):
     """Create a new user account."""
     _validate_username(username)
@@ -98,21 +96,22 @@ def create_account(username: str, password: str, email: str):
             username=username, password=password, email=email
         )
     except peewee.IntegrityError as e:
-        type_, field = interpret_integrity_error(e)
+        type_, field = helpers.interpret_integrity_error(e)
         if type_ == 'duplicate':
             if field == 'username':
-                raise RequestError(1113)
+                raise helpers.RequestError(1113)
             elif field == 'email':
-                raise RequestError(1133)
+                raise helpers.RequestError(1133)
         raise e
     send_verification_email(user=user)
+    models.Notification.send(user, 'accounts.welcome')
 
 
-@endpoint('/accounts/resend_verification_email', method='GET')
+@helpers.endpoint('/accounts/resend_verification_email', method='GET')
 def send_verification_email(user: models.User):
     """Send a verification email to a user."""
     if user.email_verified:
-        raise RequestError(1201)
+        raise helpers.RequestError(1201)
     message = (
         f'Here is the code to verify your email address: '
         f'{user.email_verify_token}.'
@@ -120,7 +119,7 @@ def send_verification_email(user: models.User):
     emails.send_email(user.email, message, 'Kasupel email verification')
 
 
-@endpoint('/accounts/verify_email', method='GET')
+@helpers.endpoint('/accounts/verify_email', method='GET')
 def verify_email(username: str, token: str):
     """Verify an email address."""
     try:
@@ -129,12 +128,12 @@ def verify_email(username: str, token: str):
             models.User.email_verify_token == token
         )
     except peewee.DoesNotExist:
-        raise RequestError(1202)
+        raise helpers.RequestError(1202)
     user.email_verified = True
     user.save()
 
 
-@endpoint('/accounts/me', method='PATCH', encrypt_request=True)
+@helpers.endpoint('/accounts/me', method='PATCH', encrypt_request=True)
 def update_account(
         user: models.User, password: str = None, avatar: bytes = None,
         email: str = None):
@@ -150,16 +149,16 @@ def update_account(
     try:
         user.save()
     except peewee.IntegrityError as e:
-        type_, field = interpret_integrity_error(e)
+        type_, field = helpers.interpret_integrity_error(e)
         if type_ == 'duplicate' and field == 'email':
-            raise RequestError(1133)
+            raise helpers.RequestError(1133)
         raise e
     else:
         if email:
             send_verification_email(user=user)
 
 
-@endpoint('/accounts/me', method='GET')
+@helpers.endpoint('/accounts/me', method='GET')
 def get_own_account(user: models.User) -> dict[str, typing.Any]:
     """Get the user's own account."""
     data = user.to_json()
@@ -167,26 +166,26 @@ def get_own_account(user: models.User) -> dict[str, typing.Any]:
     return data
 
 
-@endpoint('/user/<account>', method='GET')
+@helpers.endpoint('/user/<account>', method='GET')
 def get_account(account: models.User) -> dict[str, typing.Any]:
     """Get a user account."""
     return account.to_json()
 
 
-@endpoint('/accounts/account', method='GET')
+@helpers.endpoint('/accounts/account', method='GET')
 def get_account_by_id(id: int) -> dict[str, typing.Any]:
     """Get a user account by ID."""
     try:
         account = models.User.get_by_id(id)
     except peewee.DoesNotExist:
-        raise RequestError(1001)
+        raise helpers.RequestError(1001)
     return account.to_json()
 
 
-@endpoint('/accounts/all', method='GET')
+@helpers.endpoint('/accounts/all', method='GET')
 def get_accounts(page: int = 0) -> dict[str, typing.Any]:
     """Get a paginated list of accounts."""
-    users, pages = paginate(
+    users, pages = helpers.paginate(
         models.User.select().order_by(models.User.elo.desc()), page
     )
     return {
@@ -195,7 +194,7 @@ def get_accounts(page: int = 0) -> dict[str, typing.Any]:
     }
 
 
-@endpoint('/accounts/me', method='DELETE')
+@helpers.endpoint('/accounts/me', method='DELETE')
 def delete_account(user: models.User):
     """Delete a user's account."""
     models.Game.delete().where((
@@ -203,21 +202,21 @@ def delete_account(user: models.User):
         | (models.Game.host == None) & (models.Game.away == user)
     ))    # noqa: E711
     models.Game.update(
-        winner=models.Winner.AWAY, conclusion_type=models.Conclusion.RESIGN,
+        winner=enums.Winner.AWAY, conclusion_type=enums.Conclusion.RESIGN,
         ended_at=datetime.datetime.now()
     ).where(models.Game.host == user)
     models.Game.update(
-        winner=models.Winner.HOME, conclusion_type=models.Conclusion.RESIGN,
+        winner=enums.Winner.HOST, conclusion_type=enums.Conclusion.RESIGN,
         ended_at=datetime.datetime.now()
     ).where(models.Game.away == user)
     user.delete_instance()
 
 
-@endpoint('/accounts/notifications', method='GET')
+@helpers.endpoint('/accounts/notifications', method='GET')
 def get_notifications(
         user: models.User, page: int = 0) -> dict[str, typing.Any]:
     """Get a paginated list of notifications for the user."""
-    query, pages = paginate(user.notifications, page)
+    query, pages = helpers.paginate(user.notifications, page)
     unread = models.Notification.select().where(
         models.Notification.user == user,
         models.Notification.read == False    # noqa:E712
@@ -229,7 +228,7 @@ def get_notifications(
     }
 
 
-@endpoint('/accounts/notifications/ack/', method='POST')
+@helpers.endpoint('/accounts/notifications/ack/', method='POST')
 def acknowledge_notification(
         user: models.User, notification: models.Notification):
     """Mark a notification as read."""
@@ -237,12 +236,12 @@ def acknowledge_notification(
     notification.save()
 
 
-@endpoint('/media/avatar/<avatar_name>', method='GET')
+@helpers.endpoint('/media/avatar/<avatar_name>', method='GET')
 def get_avatar(avatar_name: str) -> bytes:
     """Get a user's avatar."""
     m = re.match(r'(\d+)-(\d+)\.(gif|jpeg|png|webp)$', avatar_name)
     if not m:
-        raise RequestError(5001)
+        raise helpers.RequestError(5001)
     user_id, avatar_id, ext = m.groups()
     user_id = int(user_id)
     avatar_id = int(avatar_id)
@@ -252,5 +251,5 @@ def get_avatar(avatar_name: str) -> bytes:
         models.User.avatar_extension == ext
     )
     if not user:
-        raise RequestError(5001)
+        raise helpers.RequestError(5001)
     return user.avatar
