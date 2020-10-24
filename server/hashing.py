@@ -7,7 +7,7 @@ import os
 def hash_password(password: str) -> str:
     """Hash a password."""
     salt = os.urandom(32)
-    key = hashlib.pbkdf2_hmac('sha3-256', password.encode(), salt, 100_000)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100_000)
     return salt + key
 
 
@@ -16,7 +16,7 @@ def check_password(password: str, hashed: str) -> bool:
     salt = hashed[:32]
     key = hashed[32:]
     attempt_key = hashlib.pbkdf2_hmac(
-        'sha3-256', password.encode(), salt, 100_000
+        'sha256', password.encode(), salt, 100_000
     )
     return hmac.compare_digest(key, attempt_key)
 
