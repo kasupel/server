@@ -47,7 +47,7 @@ else:
         encryption_algorithm=serialization.NoEncryption()
     )
     config['private_key'] = base64.b64encode(_raw_key).decode()
-    with open('config.json', 'w') as f:
+    with open(_config_file, 'w') as f:
         json.dump(config, f, indent=4)
 
 PUBLIC_KEY = PRIVATE_KEY.public_key().public_bytes(
