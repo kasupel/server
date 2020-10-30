@@ -12,15 +12,22 @@ module_path = pathlib.Path(__file__).parent.parent.absolute() / 'server'
 sys.path.append(module_path)
 
 # Set up the coverage monitor.
-cov = coverage.Coverage(include='server/*')
+cov = coverage.Coverage(source_pkgs=(
+    'server', 'server.endpoints', 'server.events', 'server.gamemodes'
+))
 cov.start()
 
-# Import the tests (these import the server module so must be imported after
-# we have added it to PATH and set up the coverage monitor).
-from .test_ratings import TestRatings
-from .test_images import TestImages
-
 # Run the tests.
+
+from server import database, models    # noqa: E402
+
+database.db.drop_tables(models.MODELS)
+database.db.create_tables(models.MODELS)
+
+from .test_chess import TestChess    # noqa: F401,E402
+from .test_images import TestImages    # noqa: F401,E402
+from .test_ratings import TestRatings    # noqa: F401,E402
+
 unittest.main(exit=False)
 
 # Create and display the report.

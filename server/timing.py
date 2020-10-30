@@ -32,7 +32,7 @@ def timer_loop():
         )
         for game in games:
             events.end_game(game)
-        events.helpers.socketio.sleep(config.TIMER_CHECK_INTERVAL)
+        events.socketio.sleep(config.TIMER_CHECK_INTERVAL)
 
 
 class Timer:

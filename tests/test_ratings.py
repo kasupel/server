@@ -1,10 +1,10 @@
 """Tests for the ELO rating system."""
-import unittest
-
 from server import enums, ratings
 
+from .utils import KasupelTest
 
-class TestRatings(unittest.TestCase):
+
+class TestRatings(KasupelTest):
     """Tests for the ELO rating system."""
 
     def _test_match(

@@ -4,7 +4,7 @@ import datetime
 import peewee
 
 from . import helpers
-from .. import enums, events, models
+from .. import enums, events, models, utils
 
 
 @helpers.endpoint('/games/find', method='POST', require_verified_email=True)
@@ -51,7 +51,7 @@ def send_invitation(
         mode: enums.Mode) -> dict[str, int]:
     """Create a game which only a specific person may join."""
     if user == invitee:
-        raise helpers.RequestError(2121)
+        raise utils.RequestError(2121)
     game = models.Game.create(
         host=user, invited=invitee, mode=mode,
         main_thinking_time=main_thinking_time,
@@ -70,7 +70,7 @@ def send_invitation(
 def accept_invitation(user: models.User, game: models.Game):
     """Accept a game you have been invited to."""
     if game.invited != user:
-        raise helpers.RequestError(2111)
+        raise utils.RequestError(2111)
     game.start_game(user)
     models.Notification.send(game.host, 'matchmaking.invite_accepted', game)
     events.has_started(game)
@@ -80,7 +80,7 @@ def accept_invitation(user: models.User, game: models.Game):
 def decline_invitation(user: models.User, game: models.Game):
     """Decline a game you have been invited to."""
     if game.invited != user:
-        raise helpers.RequestError(2111)
+        raise utils.RequestError(2111)
     if game.host_socket_id:
         events.disconnect(
             game.host_socket_id,

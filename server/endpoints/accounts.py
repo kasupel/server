@@ -14,7 +14,7 @@ import peewee
 import requests
 
 from . import helpers
-from .. import emails, enums, models
+from .. import emails, enums, models, utils
 
 
 def _validate_username(username: str):
@@ -23,9 +23,9 @@ def _validate_username(username: str):
     This does not enforce uniqueness.
     """
     if not username:
-        raise helpers.RequestError(1112)
+        raise utils.RequestError(1112)
     elif len(username) > 32:
-        raise helpers.RequestError(1111)
+        raise utils.RequestError(1111)
 
 
 def _validate_password(password: str):
@@ -34,11 +34,11 @@ def _validate_password(password: str):
     Also checks against the haveibeenpwned.com database.
     """
     if len(password) < 10:
-        raise helpers.RequestError(1121)
+        raise utils.RequestError(1121)
     if len(password) > 32:
-        raise helpers.RequestError(1122)
+        raise utils.RequestError(1122)
     if len(set(password)) < 6:
-        raise helpers.RequestError(1123)
+        raise utils.RequestError(1123)
     sha1_hash = hashlib.sha1(password.encode()).hexdigest().upper()
     hash_range = sha1_hash[:5]
     resp = requests.get(
@@ -49,7 +49,7 @@ def _validate_password(password: str):
         if line:
             hash_suffix, count = line.split(':')
             if int(count) and hash_range + hash_suffix == sha1_hash:
-                raise helpers.RequestError(1124)
+                raise utils.RequestError(1124)
 
 
 def _validate_email(email: str):
@@ -60,13 +60,13 @@ def _validate_email(email: str):
     not very necessary though.
     """
     if len(email) > 255:
-        raise helpers.RequestError(1130)
+        raise utils.RequestError(1130)
     parts = email.split('@')
     if len(parts) < 2:
-        raise helpers.RequestError(1131)
+        raise utils.RequestError(1131)
     if len(parts) > 2:
         if not (parts[0].startswith('"') and parts[-2].endswith('"')):
-            raise helpers.RequestError(1131)
+            raise utils.RequestError(1131)
 
 
 @helpers.endpoint('/accounts/login', method='POST', encrypt_request=True)
@@ -74,7 +74,7 @@ def login(
         username: str, password: str, token: bytes) -> dict[str, int]:
     """Create a new authentication session."""
     if len(token) != 32:
-        raise helpers.RequestError(1308)
+        raise utils.RequestError(1308)
     session = models.User.login(username, password, token)
     return {'session_id': session.id}
 
@@ -96,12 +96,12 @@ def create_account(username: str, password: str, email: str):
             username=username, password=password, email=email
         )
     except peewee.IntegrityError as e:
-        type_, field = helpers.interpret_integrity_error(e)
+        type_, field = utils.interpret_integrity_error(e)
         if type_ == 'duplicate':
             if field == 'username':
-                raise helpers.RequestError(1113)
+                raise utils.RequestError(1113)
             elif field == 'email':
-                raise helpers.RequestError(1133)
+                raise utils.RequestError(1133)
         raise e
     send_verification_email(user=user)
     models.Notification.send(user, 'accounts.welcome')
@@ -111,7 +111,7 @@ def create_account(username: str, password: str, email: str):
 def send_verification_email(user: models.User):
     """Send a verification email to a user."""
     if user.email_verified:
-        raise helpers.RequestError(1201)
+        raise utils.RequestError(1201)
     message = (
         f'Here is the code to verify your email address: '
         f'{user.email_verify_token}.'
@@ -128,7 +128,7 @@ def verify_email(username: str, token: str):
             models.User.email_verify_token == token
         )
     except peewee.DoesNotExist:
-        raise helpers.RequestError(1202)
+        raise utils.RequestError(1202)
     user.email_verified = True
     user.save()
 
@@ -149,9 +149,9 @@ def update_account(
     try:
         user.save()
     except peewee.IntegrityError as e:
-        type_, field = helpers.interpret_integrity_error(e)
+        type_, field = utils.interpret_integrity_error(e)
         if type_ == 'duplicate' and field == 'email':
-            raise helpers.RequestError(1133)
+            raise utils.RequestError(1133)
         raise e
     else:
         if email:
@@ -178,7 +178,7 @@ def get_account_by_id(id: int) -> dict[str, typing.Any]:
     try:
         account = models.User.get_by_id(id)
     except peewee.DoesNotExist:
-        raise helpers.RequestError(1001)
+        raise utils.RequestError(1001)
     return account.to_json()
 
 
@@ -241,7 +241,7 @@ def get_avatar(avatar_name: str) -> bytes:
     """Get a user's avatar."""
     m = re.match(r'(\d+)-(\d+)\.(gif|jpeg|png|webp)$', avatar_name)
     if not m:
-        raise helpers.RequestError(5001)
+        raise utils.RequestError(5001)
     user_id, avatar_id, ext = m.groups()
     user_id = int(user_id)
     avatar_id = int(avatar_id)
@@ -251,5 +251,5 @@ def get_avatar(avatar_name: str) -> bytes:
         models.User.avatar_extension == ext
     )
     if not user:
-        raise helpers.RequestError(5001)
+        raise utils.RequestError(5001)
     return user.avatar

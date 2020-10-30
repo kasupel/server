@@ -1,23 +1,13 @@
 """Tests for image validation."""
 import pathlib
-import typing
-import unittest
 
 from server import images
-from server.endpoints import helpers
+
+from .utils import KasupelTest
 
 
-class TestImages(unittest.TestCase):
+class TestImages(KasupelTest):
     """Tests for image validation."""
-
-    def assert_raises_request_error(self, fun: typing.Callable, code: int):
-        """Assert that a function raises some request error."""
-        try:
-            fun()
-        except helpers.RequestError as e:
-            self.assertEqual(e.code, code)
-        else:
-            self.assertTrue(False, 'RequestError was not raised.')
 
     def _test_image(self, image_name: str) -> bytes:
         """Open an image from the res folder and validate it.

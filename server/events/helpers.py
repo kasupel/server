@@ -7,12 +7,7 @@ import flask
 
 import flask_socketio as sockets
 
-from .. import enums, models
-from ..endpoints import converters
-from ..endpoints.helpers import RequestError, app
-
-
-socketio = sockets.SocketIO(app)
+from .. import enums, events, models, utils
 
 
 class EventContext:
@@ -34,7 +29,7 @@ class EventContext:
             user = game.away
             opponent = game.host
             if not game:
-                raise RequestError(4101)
+                raise utils.RequestError(4101)
         self.game = game
         self.side = side
         self.user = user
@@ -47,7 +42,7 @@ def send_room(name: str, data: dict[str, typing.Any], room: str):
     Doesn't do much wrapping of socketio.emit, mainly exists in case we want
     to add more wrapping later.
     """
-    socketio.emit(name, data, room=room)
+    events.socketio.emit(name, data, room=room)
 
 
 def send_user(name: str, data: dict[str, typing.Any]):
@@ -81,7 +76,7 @@ def event(name: str) -> typing.Callable:
 
     def wrapper(main: typing.Callable) -> typing.Callable:
         """Wrap an endpoint."""
-        converter_wrapped = converters.wrap(main)
+        converter_wrapped = utils.converters.wrap(main)
 
         @functools.wraps(main)
         def return_wrapped(
@@ -90,18 +85,18 @@ def event(name: str) -> typing.Callable:
             try:
                 flask.request.context = EventContext()
                 converter_wrapped(**kwargs)
-            except RequestError as error:
+            except utils.RequestError as error:
                 if name == 'connect':
                     # Don't accept connection if there is an error on connect.
                     raise sockets.ConnectionRefusedError(
                         json.dumps(error.as_dict)
                     )
                 else:
-                    socketio.emit(
+                    events.socketio.emit(
                         'bad_request', error.as_dict, room=flask.request.sid
                     )
 
-        flask_wrapped = socketio.on(name)(return_wrapped)
+        flask_wrapped = events.socketio.on(name)(return_wrapped)
         return flask_wrapped
 
     return wrapper

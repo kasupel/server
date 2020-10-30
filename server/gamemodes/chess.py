@@ -3,11 +3,8 @@ from __future__ import annotations
 
 import typing
 
-import peewee
-
 from . import gamemode
-from .. import enums, models
-from ..endpoints import converters
+from .. import enums, models, utils
 
 
 class MockPiece:
@@ -61,7 +58,7 @@ class Chess(gamemode.GameMode):
 
     def get_piece(self, rank: int, file: int) -> bool:
         """Get the piece on a square."""
-        for move in self.hypothetical_moves:
+        for move in self.hypothetical_moves or ():
             if move[1:3] == (rank, file):
                 if len(move) > 3:
                     # Includes a promotion.
@@ -71,13 +68,10 @@ class Chess(gamemode.GameMode):
                 piece = move[0]
                 p_type = promotion or piece.piece_type
                 return MockPiece(piece, rank, file, p_type)
-        try:
-            return models.Piece.get(
-                models.Piece.file == file, models.Piece.rank == rank,
-                models.Piece.game == self.game
-            )
-        except peewee.DoesNotExist:
-            return None
+        return models.Piece.get_or_none(
+            models.Piece.file == file, models.Piece.rank == rank,
+            models.Piece.game == self.game
+        )
 
     def path_is_empty(
             self, piece: models.Piece, rank: int, file: int) -> bool:
@@ -186,7 +180,7 @@ class Chess(gamemode.GameMode):
                     )
                 )
                 return (
-                    (victim and victim.side != pawn.side) or en_passant_valid
+                    victim.side != pawn.side if victim else en_passant_valid
                 )
             else:
                 return False
@@ -197,7 +191,7 @@ class Chess(gamemode.GameMode):
                 return False
             return not bool(
                 self.get_piece(rank, file)
-                or self.get_piece(rank, file - pawn.side.forwards)
+                or self.get_piece(rank - pawn.side.forwards, file)
             )
         else:
             return False
@@ -366,6 +360,8 @@ class Chess(gamemode.GameMode):
             return False
         if not self.on_board(end_rank, end_file):
             return False
+        if piece.side != self.game.current_turn:
+            return False
         validators = {
             enums.PieceType.PAWN: (
                 lambda *args: self.validate_pawn_move(*args, promotion)
@@ -382,7 +378,7 @@ class Chess(gamemode.GameMode):
             piece.side, (piece, end_rank, end_file)
         )
 
-    @converters.wrap
+    @utils.converters.wrap
     def make_move(
             self, start_rank: int, start_file: int, end_rank: int,
             end_file: int, promotion: enums.PieceType = None) -> bool:

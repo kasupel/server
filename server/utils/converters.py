@@ -9,7 +9,7 @@ import typing
 
 import peewee
 
-from . import helpers
+from .. import utils
 
 
 def int_converter(value: typing.Union[str, int]) -> int:
@@ -17,7 +17,7 @@ def int_converter(value: typing.Union[str, int]) -> int:
     try:
         return int(value)
     except ValueError:
-        raise helpers.RequestError(3111)
+        raise utils.RequestError(3111)
 
 
 def _bytes_converter(value: typing.Union[str, bytes]) -> bytes:
@@ -27,7 +27,7 @@ def _bytes_converter(value: typing.Union[str, bytes]) -> bytes:
     try:
         return base64.b64decode(str(value))
     except ValueError:
-        raise helpers.RequestError(3112)
+        raise utils.RequestError(3112)
 
 
 def _dict_converter(
@@ -37,7 +37,7 @@ def _dict_converter(
     Does no actual conversion, only validation.
     """
     if not isinstance(value, dict):
-        raise helpers.RequestError(3113)
+        raise utils.RequestError(3113)
     return value
 
 
@@ -58,7 +58,7 @@ def _make_enum_converter(enum_class: enum.Enum) -> typing.Callable:
         try:
             return enum_class(value)
         except ValueError:
-            raise helpers.RequestError(3114)
+            raise utils.RequestError(3114)
     return enum_converter
 
 
@@ -68,7 +68,7 @@ def _plain_converter(converter: typing.Callable) -> typing.Callable:
     def main(value: typing.Any) -> typing.Any:
         if value is not None:
             return converter(value)
-        raise helpers.RequestError(3101)
+        raise utils.RequestError(3101)
     return main
 
 
@@ -138,10 +138,12 @@ def wrap(endpoint: typing.Callable) -> typing.Callable:
     authenticated, converters = get_converters(endpoint)
 
     @functools.wraps(endpoint)
-    def wrapped(**kwargs: dict[str, typing.Any]) -> typing.Any:
+    def wrapped(
+            self_or_cls: typing.Any = None,
+            **kwargs: dict[str, typing.Any]) -> typing.Any:
         """Convert arguments before calling the endpoint."""
         if authenticated and not kwargs.get('user'):
-            raise helpers.RequestError(1301)
+            raise utils.RequestError(1301)
         elif kwargs.get('user') and not authenticated:
             del kwargs['user']
         converted = {}
@@ -151,10 +153,11 @@ def wrap(endpoint: typing.Callable) -> typing.Callable:
             else:
                 converted[kwarg] = kwargs[kwarg]
         try:
-            return endpoint(**converted)
+            args = (self_or_cls,) if self_or_cls else ()
+            return endpoint(*args, **converted)
         except TypeError as e:
-            if helpers.is_wrong_arguments(e, endpoint):
-                raise helpers.RequestError(3102)
+            if utils.is_wrong_arguments(e, endpoint):
+                raise utils.RequestError(3102)
             else:
                 raise e
 
