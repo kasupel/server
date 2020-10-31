@@ -21,13 +21,6 @@ Move = collections.namedtuple('Move', [
     'start_rank', 'start_file', 'end_rank', 'end_file', 'promotion'
 ])
 
-INITIAL_LAYOUT = {}
-for _file, _piece in enumerate('RNBQKBNR'):
-    INITIAL_LAYOUT[0, _file] = _piece
-    INITIAL_LAYOUT[1, _file] = 'P'
-    INITIAL_LAYOUT[6, _file] = 'p'
-    INITIAL_LAYOUT[7, _file] = _piece.lower()
-
 
 class TestChess(ModelTest):
     """Test the chess logic."""
@@ -46,7 +39,8 @@ class TestChess(ModelTest):
             main_thinking_time=datetime.timedelta(days=1),
             fixed_extra_time=datetime.timedelta(0),
             time_increment_per_turn=datetime.timedelta(minutes=1),
-            started_at=datetime.datetime.now()
+            started_at=datetime.datetime.now(),
+            last_turn=datetime.datetime.now()
         )
 
     def assert_layout(
@@ -68,8 +62,10 @@ class TestChess(ModelTest):
 
     def _test_make_move(
             self, layout: typing.Dict[typing.Tuple[int, int], str],
-            move: Move, expected_valid: bool = True):
+            move: Move, expected_valid: bool = True, host_turn: bool = True):
         """Test validation of some move."""
+        if not host_turn:
+            self.game.current_turn = enums.Side.AWAY
         # Lay out the board.
         for rank, file in layout:
             symbol = layout[(rank, file)]
@@ -104,13 +100,19 @@ class TestChess(ModelTest):
     def test_board_layout(self):
         """Check that the board is initially laid out correctly."""
         self.game.game_mode.layout_board()
-        self.assert_layout(INITIAL_LAYOUT)
+        layout = {}
+        for file, piece in enumerate('RNBQKBNR'):
+            layout[0, file] = piece
+            layout[1, file] = 'P'
+            layout[6, file] = 'p'
+            layout[7, file] = piece.lower()
+        self.assert_layout(layout)
 
     def test_off_board(self):
         """Test trying to move a piece off the board."""
         self._test_make_move(
-            INITIAL_LAYOUT, Move(
-                start_rank=0, start_file=0, end_rank=0, end_file=-1,
+            {(3, 0): 'R'}, Move(
+                start_rank=3, start_file=0, end_rank=8, end_file=0,
                 promotion=None
             ), expected_valid=False
         )
@@ -118,8 +120,8 @@ class TestChess(ModelTest):
     def test_no_move(self):
         """Test making a move to the same square."""
         self._test_make_move(
-            INITIAL_LAYOUT, Move(
-                start_rank=1, start_file=3, end_rank=1, end_file=3,
+            {(3, 2): 'K'}, Move(
+                start_rank=3, start_file=2, end_rank=3, end_file=2,
                 promotion=None
             ), expected_valid=False
         )
@@ -127,7 +129,7 @@ class TestChess(ModelTest):
     def test_move_opponent(self):
         """Test trying to move a piece belonging to the opponent."""
         self._test_make_move(
-            INITIAL_LAYOUT, Move(
+            {(6, 4): 'p'}, Move(
                 start_rank=6, start_file=4, end_rank=5, end_file=4,
                 promotion=None
             ), expected_valid=False
@@ -136,29 +138,13 @@ class TestChess(ModelTest):
     def test_move_empty(self):
         """Test trying to move a non-existant piece."""
         self._test_make_move(
-            INITIAL_LAYOUT, Move(
+            {}, Move(
                 start_rank=3, start_file=4, end_rank=3, end_file=6,
                 promotion=None
             ), expected_valid=False
         )
 
-    def test_move_through(self):
-        """Test trying to move a bishop through another piece."""
-        self._test_make_move(
-            INITIAL_LAYOUT, Move(
-                start_rank=0, start_file=2, end_rank=2, end_file=4,
-                promotion=None
-            ), expected_valid=False
-        )
-
-    def test_take_own(self):
-        """Test trying to take our own piece."""
-        self._test_make_move(
-            INITIAL_LAYOUT, Move(
-                start_rank=0, start_file=0, end_rank=0, end_file=1,
-                promotion=None
-            ), expected_valid=False
-        )
+    # Rooks
 
     def test_diagonal_rook(self):
         """Test trying to move a rook diagonally."""
@@ -169,6 +155,35 @@ class TestChess(ModelTest):
             ), expected_valid=False
         )
 
+    def test_promote_rook(self):
+        """Test trying to promote a rook."""
+        self._test_make_move(
+            {(6, 4): 'R'}, Move(
+                start_rank=6, start_file=4, end_rank=7, end_file=4,
+                promotion=enums.PieceType.QUEEN
+            ), expected_valid=False
+        )
+
+    def test_rook_take_own(self):
+        """Test trying to take our own piece with a rook."""
+        self._test_make_move(
+            {(3, 2): 'R', (5, 2): 'P'}, Move(
+                start_rank=3, start_file=2, end_rank=5, end_file=2,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_rook_move_through(self):
+        """Test trying to move a rook through another piece."""
+        self._test_make_move(
+            {(4, 1): 'R', (4, 3): 'k'}, Move(
+                start_rank=4, start_file=1, end_rank=4, end_file=5,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    # Bishops
+
     def test_straight_bishop(self):
         """Test trying to move a bishop in a straight line."""
         self._test_make_move(
@@ -177,6 +192,35 @@ class TestChess(ModelTest):
                 promotion=None
             ), expected_valid=False
         )
+
+    def test_promote_bishop(self):
+        """Test trying to promote a rook."""
+        self._test_make_move(
+            {(5, 2): 'B'}, Move(
+                start_rank=5, start_file=2, end_rank=7, end_file=0,
+                promotion=enums.PieceType.QUEEN
+            ), expected_valid=False
+        )
+
+    def test_bishop_take_own(self):
+        """Test trying to take our own piece with a bishop."""
+        self._test_make_move(
+            {(0, 0): 'B', (5, 5): 'Q'}, Move(
+                start_rank=0, start_file=0, end_rank=5, end_file=5,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_bishop_move_through(self):
+        """Test trying to move a bishop through another piece."""
+        self._test_make_move(
+            {(0, 2): 'B', (1, 3): 'P'}, Move(
+                start_rank=0, start_file=2, end_rank=2, end_file=4,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    # Pawns
 
     def test_pawn_sideways(self):
         """Test trying to move a pawn right 2."""
@@ -300,6 +344,183 @@ class TestChess(ModelTest):
         self._test_make_move(
             {(1, 3): 'P', (2, 3): 'N'}, Move(
                 start_rank=1, start_file=3, end_rank=3, end_file=3,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    # Knights
+
+    def test_knight_straight(self):
+        """Test trying to move a knight in a straight line."""
+        self._test_make_move(
+            {(3, 4): 'N'}, Move(
+                start_rank=3, start_file=4, end_rank=5, end_file=4,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_knight_diagonal(self):
+        """Test trying to move a knight to a diagonally adjacent square."""
+        self._test_make_move(
+            {(2, 6): 'N'}, Move(
+                start_rank=2, start_file=6, end_rank=3, end_file=5,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_knight_long(self):
+        """Test trying to move a knight down 3 right 1."""
+        self._test_make_move(
+            {(3, 4): 'N'}, Move(
+                start_rank=4, start_file=3, end_rank=1, end_file=4,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_knight_take_own(self):
+        """Test trying to take our own piece with a knight."""
+        self._test_make_move(
+            {(0, 1): 'N', (2, 2): 'P'}, Move(
+                start_rank=0, start_file=1, end_rank=2, end_file=2,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_promote_knight(self):
+        """Test trying to promote a knight."""
+        self._test_make_move(
+            {(6, 4): 'N'}, Move(
+                start_rank=6, start_file=4, end_rank=7, end_file=6,
+                promotion=enums.PieceType.QUEEN
+            ), expected_valid=False
+        )
+
+    # Kings
+
+    def test_promote_king(self):
+        """Test trying to promote a king."""
+        self._test_make_move(
+            {(6, 1): 'K'}, Move(
+                start_rank=6, start_file=1, end_rank=7, end_file=2,
+                promotion=enums.PieceType.ROOK
+            ), expected_valid=False
+        )
+
+    def test_king_take_own(self):
+        """Test trying to take our own piece with a king."""
+        self._test_make_move(
+            {(3, 4): 'K', (3, 5): 'N'}, Move(
+                start_rank=3, start_file=4, end_rank=3, end_file=5,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_king_move_far(self):
+        """Test trying to move a king two squares."""
+        self._test_make_move(
+            {(0, 0): 'K'}, Move(
+                start_rank=0, start_file=0, end_rank=2, end_file=0,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_moved_king(self):
+        """Test trying to castle with a moved king."""
+        self._test_make_move(
+            {(0, 0): 'R', (0, 4): 'Kx'}, Move(
+                start_rank=0, start_file=4, end_rank=0, end_file=2,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_moved_rook(self):
+        """Test trying to castle with a moved rook."""
+        self._test_make_move(
+            {(0, 4): 'K', (0, 7): 'Rx'}, Move(
+                start_rank=0, start_file=4, end_rank=0, end_file=6,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_too_far(self):
+        """Test trying to castle too far to the left."""
+        self._test_make_move(
+            {(0, 4): 'K', (0, 0): 'R'}, Move(
+                start_rank=0, start_file=4, end_rank=0, end_file=1,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_no_rook(self):
+        """Test trying to castle with a non-existant rook."""
+        self._test_make_move(
+            {(0, 4): 'K'}, Move(
+                start_rank=0, start_file=4, end_rank=0, end_file=2,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_through_piece(self):
+        """Test trying to castle through another piece."""
+        self._test_make_move(
+            {(0, 4): 'K', (0, 1): 'N', (0, 0): 'R'}, Move(
+                start_rank=0, start_file=4, end_rank=0, end_file=2,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_out_of_check(self):
+        """Test trying to castle out of check."""
+        self._test_make_move(
+            {(0, 4): 'K', (3, 4): 'r', (0, 7): 'R'}, Move(
+                start_rank=0, start_file=4, end_rank=0, end_file=6,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_castle_through_check(self):
+        """Test trying to castle through check."""
+        self._test_make_move(
+            {(7, 4): 'k', (6, 4): 'B', (7, 7): 'r'}, Move(
+                start_rank=7, start_file=4, end_rank=7, end_file=6,
+                promotion=None
+            ), expected_valid=False, host_turn=False
+        )
+
+    # Queens
+
+    def test_queen_knights_move(self):
+        """Test trying to move a queen in a knight's move."""
+        self._test_make_move(
+            {(2, 6): 'Q'}, Move(
+                start_rank=2, start_file=6, end_rank=0, end_file=7,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_promote_queen(self):
+        """Test trying to promote a queen."""
+        self._test_make_move(
+            {(0, 2): 'Q'}, Move(
+                start_rank=0, start_file=2, end_rank=7, end_file=2,
+                promotion=enums.PieceType.ROOK
+            ), expected_valid=False
+        )
+
+    def test_queen_take_own(self):
+        """Test trying to take our own piece with a queen."""
+        self._test_make_move(
+            {(4, 4): 'Q', (7, 7): 'N'}, Move(
+                start_rank=4, start_file=4, end_rank=7, end_file=7,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_queen_move_through(self):
+        """Test trying to move a queen through another piece."""
+        self._test_make_move(
+            {(0, 3): 'Q', (1, 3): 'p'}, Move(
+                start_rank=0, start_file=3, end_rank=5, end_file=3,
                 promotion=None
             ), expected_valid=False
         )

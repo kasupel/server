@@ -97,10 +97,7 @@ class Chess(gamemode.GameMode):
 
     def on_board(self, rank: int, file: int) -> bool:
         """Check if valid square i.e. rank and file on board."""
-        return (
-            rank >= 0 and rank <= 7
-            and file >= 0 and file <= 7
-        )
+        return 7 >= rank >= 0 and 7 >= file >= 0
 
     def get_moves_in_direction(
             self, piece: models.Piece, rank_direction: int,
@@ -124,7 +121,7 @@ class Chess(gamemode.GameMode):
                 tuple[models.Piece, int, int, enums.PieceType], ...
             ]) -> bool:
         """Check if a series of moves would put a side in check."""
-        if self.hypothetical_moves is not None:
+        if self.hypothetical_moves is not None:    # pragma: no cover
             raise RuntimeError('Checkmate detection recursion detected.')
         self.hypothetical_moves = moves    # self.get_piece will observe this
         king = models.Piece.get(
@@ -136,10 +133,22 @@ class Chess(gamemode.GameMode):
             models.Piece.side == ~side,
             models.Piece.game == self.game
         )
+        piece_changes = {}
+        for move in moves:
+            if len(move) == 3:
+                # Add promotion.
+                move = [*move, None]
+            piece_changes[move[0].id] = (
+                move[1], move[2], move[3] or move[0].piece_type
+            )
+        if king.id in piece_changes:
+            king = MockPiece(king, *piece_changes[king.id])
         for enemy in enemies:
+            if enemy.id in piece_changes:
+                enemy = MockPiece(enemy, *piece_changes[enemy.id])
             check = self.validate_move(
-                enemy.file, enemy.rank, king.file, king.rank,
-                check_allowed=True
+                enemy.rank, enemy.file, king.rank, king.file,
+                check_allowed=True, hypothetical_opponent_turn=True
             )
             if check:
                 self.hypothetical_moves = None
@@ -218,8 +227,11 @@ class Chess(gamemode.GameMode):
                     yield rank, file, piece
 
     def validate_rook_move(
-            self, rook: models.Piece, rank: int, file: int) -> bool:
+            self, rook: models.Piece, rank: int, file: int,
+            promotion: enums.PieceType = None) -> bool:
         """Validate a rook's move."""
+        if promotion:
+            return False
         file_delta = file - rook.file
         rank_delta = rank - rook.file
         if file_delta and rank_delta:
@@ -233,8 +245,11 @@ class Chess(gamemode.GameMode):
                 yield move
 
     def validate_knight_move(
-            self, knight: models.Piece, rank: int, file: int) -> bool:
+            self, knight: models.Piece, rank: int, file: int,
+            promotion: enums.PieceType = None) -> bool:
         """Validate a knight's move."""
+        if promotion:
+            return False
         absolute_file_delta = abs(file - knight.file)
         absolute_rank_delta = abs(rank - knight.rank)
         if (absolute_file_delta, absolute_rank_delta) not in ((1, 2), (2, 1)):
@@ -255,8 +270,11 @@ class Chess(gamemode.GameMode):
                         yield rank, file
 
     def validate_bishop_move(
-            self, bishop: models.Piece, rank: int, file: int) -> bool:
+            self, bishop: models.Piece, rank: int, file: int,
+            promotion: enums.PieceType = None) -> bool:
         """Validate a bishop's move."""
+        if promotion:
+            return False
         absolute_file_delta = abs(file - bishop.file)
         absolute_rank_delta = abs(rank - bishop.rank)
         if absolute_file_delta != absolute_rank_delta:
@@ -271,8 +289,11 @@ class Chess(gamemode.GameMode):
                 yield move
 
     def validate_queen_move(
-            self, queen: models.Piece, rank: int, file: int) -> bool:
+            self, queen: models.Piece, rank: int, file: int,
+            promotion: enums.PieceType = None) -> bool:
         """Validate a queen's move."""
+        if promotion:
+            return False
         absolute_file_delta = abs(file - queen.file)
         absolute_rank_delta = abs(rank - queen.rank)
         bishops_move = absolute_file_delta == absolute_rank_delta
@@ -293,8 +314,11 @@ class Chess(gamemode.GameMode):
                     yield move
 
     def validate_king_move(
-            self, king: models.Piece, rank: int, file: int) -> bool:
+            self, king: models.Piece, rank: int, file: int,
+            promotion: enums.PieceType = None) -> bool:
         """Validate a king's move."""
+        if promotion:
+            return False
         absolute_file_delta = abs(file - king.file)
         absolute_rank_delta = abs(rank - king.rank)
         # Check for castling attempt.
@@ -324,9 +348,7 @@ class Chess(gamemode.GameMode):
         if (absolute_file_delta > 1) or (absolute_rank_delta > 1):
             return False
         victim = self.get_piece(rank, file)
-        if (not victim) or (victim.side != king.side):
-            return True
-        return False
+        return (not victim) or (victim.side != king.side)
 
     def get_king_moves(self, king: models.Piece) -> typing.Iterator[int, int]:
         """Get all possible moves for a king."""
@@ -351,7 +373,8 @@ class Chess(gamemode.GameMode):
     def validate_move(
             self, start_rank: int, start_file: int, end_rank: int,
             end_file: int, promotion: enums.PieceType = None,
-            check_allowed: bool = False) -> bool:
+            check_allowed: bool = False,
+            hypothetical_opponent_turn: bool = False) -> bool:
         """Validate a move, without first converting the parameters."""
         if start_file == end_file and start_rank == end_rank:
             return False
@@ -360,19 +383,20 @@ class Chess(gamemode.GameMode):
             return False
         if not self.on_board(end_rank, end_file):
             return False
-        if piece.side != self.game.current_turn:
+        if (
+                (piece.side != self.game.current_turn)
+                and (not hypothetical_opponent_turn)):
             return False
         validators = {
-            enums.PieceType.PAWN: (
-                lambda *args: self.validate_pawn_move(*args, promotion)
-            ),
+            enums.PieceType.PAWN: self.validate_pawn_move,
             enums.PieceType.ROOK: self.validate_rook_move,
             enums.PieceType.KNIGHT: self.validate_knight_move,
             enums.PieceType.BISHOP: self.validate_bishop_move,
             enums.PieceType.QUEEN: self.validate_queen_move,
             enums.PieceType.KING: self.validate_king_move
         }
-        if not validators[piece.piece_type](piece, end_rank, end_file):
+        if not validators[piece.piece_type](
+                piece, end_rank, end_file, promotion):
             return False
         return check_allowed or not self.hypothetical_check(
             piece.side, (piece, end_rank, end_file)
@@ -402,6 +426,7 @@ class Chess(gamemode.GameMode):
         if target or piece.piece_type == enums.PieceType.PAWN:
             self.game.last_kill_or_pawn_move = int(self.game.turn_number)
             self.game.save()
+        return True
 
     def possible_moves(self, side: enums.Side) -> typing.Iterator[
             tuple[models.Piece, int, int]]:

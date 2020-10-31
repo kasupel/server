@@ -52,7 +52,7 @@ def is_wrong_arguments(error: TypeError, fun: typing.Callable) -> bool:
 
     Only checks for keyword arguments for a specific function.
     """
-    err = str(error).removeprefix(fun.__name__)    # Requires Python 3.9!
+    err = str(error).removeprefix(fun.__name__)
     return bool(re.match(
         r'\(\) (got an unexpected keyword|missing [0-9]+ required '
         r'(positional|keyword-only)) arguments?',
