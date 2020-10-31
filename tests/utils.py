@@ -1,8 +1,9 @@
 """Utilities shared by the tests."""
+import datetime
 import typing
 import unittest
 
-from server import database, models, utils
+from server import database, enums, models, utils
 
 
 class KasupelTest(unittest.TestCase):
@@ -26,3 +27,25 @@ class ModelTest(KasupelTest):
         database.db.drop_tables(models.MODELS)
         database.db.create_tables(models.MODELS)
         super().tearDown()
+
+
+class GameTest(ModelTest):
+    """Test case that generates a game object to use."""
+
+    def setUp(self):
+        """Create a game for testing."""
+        super().setUp()
+        self.user_1 = models.User.create(
+            username='Test', password='password', _email='email'
+        )
+        self.user_2 = models.User.create(
+            username='Test2', password='password', _email='email2'
+        )
+        self.game = models.Game.create(
+            host=self.user_1, away=self.user_2, mode=enums.Mode.CHESS,
+            main_thinking_time=datetime.timedelta(days=1),
+            fixed_extra_time=datetime.timedelta(0),
+            time_increment_per_turn=datetime.timedelta(minutes=1),
+            started_at=datetime.datetime.now(),
+            last_turn=datetime.datetime.now()
+        )

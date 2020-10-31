@@ -1,7 +1,7 @@
 """Tests for image validation."""
 import pathlib
 
-from server import images
+from server.utils import images
 
 from .utils import KasupelTest
 

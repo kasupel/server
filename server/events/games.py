@@ -7,7 +7,7 @@ import typing
 import flask
 
 from . import connections, helpers
-from .. import enums, models, ratings, utils
+from .. import enums, models, utils
 
 
 def has_started(game: models.Game):
@@ -73,7 +73,7 @@ def end_game(
             game.winner = enums.Winner.HOST
     else:
         game.winner = enums.Winner.DRAW
-    game.host.elo, game.away.elo = ratings.calculate(
+    game.host.elo, game.away.elo = utils.ratings.calculate(
         game.host.elo, game.away.elo, game.winner
     )
     game.conclusion_type = reason

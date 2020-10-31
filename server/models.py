@@ -17,8 +17,9 @@ import peewee as pw
 import playhouse.postgres_ext as pw_postgres
 
 from . import (
-    config, database, enums, events, gamemodes, hashing, images, timing, utils
+    config, database, enums, events, gamemodes, timing, utils
 )
+from .utils import hashing, images
 
 
 def generate_verification_token() -> str:
@@ -337,16 +338,15 @@ class Game(database.BaseModel):
         """Create a game."""
         super().__init__(*args, **kwargs)
         self.turn_number = TurnCounter(self)
-        self.host_time = self.main_thinking_time
-        self.away_time = self.main_thinking_time
         self.timer = timing.Timer(self)
 
     def start_game(self, away: User):
         """Start a game."""
         self.invited = None
         self.away = away
-        self.started_at = datetime.datetime.now()
-        self.last_turn = datetime.datetime.now()
+        self.started_at = self.last_turn = datetime.datetime.now()
+        self.host_time = self.main_thinking_time
+        self.away_time = self.main_thinking_time
         self.save()
 
     @functools.cached_property

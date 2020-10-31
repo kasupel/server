@@ -1,11 +1,10 @@
 """Test the chess logic."""
 import collections
-import datetime
 import typing
 
 from server import enums, models
 
-from .utils import ModelTest
+from .utils import GameTest
 
 
 PIECES = {
@@ -22,26 +21,8 @@ Move = collections.namedtuple('Move', [
 ])
 
 
-class TestChess(ModelTest):
+class TestChess(GameTest):
     """Test the chess logic."""
-
-    def setUp(self):
-        """Create a game for testing."""
-        super().setUp()
-        self.user_1 = models.User.create(
-            username='Test', password='password', _email='email'
-        )
-        self.user_2 = models.User.create(
-            username='Test2', password='password', _email='email2'
-        )
-        self.game = models.Game.create(
-            host=self.user_1, away=self.user_2, mode=enums.Mode.CHESS,
-            main_thinking_time=datetime.timedelta(days=1),
-            fixed_extra_time=datetime.timedelta(0),
-            time_increment_per_turn=datetime.timedelta(minutes=1),
-            started_at=datetime.datetime.now(),
-            last_turn=datetime.datetime.now()
-        )
 
     def assert_layout(
             self, layout: typing.Dict[typing.Tuple[int, int], str],

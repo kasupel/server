@@ -8,14 +8,11 @@ import math
 import traceback
 import typing
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
-
 import flask
 
 import peewee
 
-from .. import config, database, endpoints, models, utils
+from .. import database, endpoints, models, utils
 
 
 def paginate(
@@ -36,14 +33,7 @@ def paginate(
 def _decrypt_request(raw: bytes) -> dict[str, typing.Any]:
     """Decrypt a JSON object encrypted with our public key."""
     try:
-        raw_json = config.PRIVATE_KEY.decrypt(
-            raw,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
+        raw_json = utils.encryption.decrypt_message(raw)
     except ValueError:
         raise utils.RequestError(3113)
     try:
@@ -155,7 +145,7 @@ def endpoint(
 )
 def get_public_key() -> str:
     """Get our public RSA key."""
-    return config.PUBLIC_KEY
+    return utils.encryption.PUBLIC_KEY
 
 
 @endpoints.app.errorhandler(404)

@@ -1,5 +1,6 @@
 """Tests for the ELO rating system."""
-from server import enums, ratings
+from server import enums
+from server.utils import ratings
 
 from .utils import KasupelTest
 

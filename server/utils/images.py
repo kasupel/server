@@ -1,7 +1,7 @@
 """Tools for validating and serving images."""
 import imghdr
 
-from . import utils
+from .. import utils
 
 
 ALLOWED_FORMATS = ('gif', 'jpeg', 'png', 'webp')

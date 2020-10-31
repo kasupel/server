@@ -1,6 +1,6 @@
 """Calculate ELO ratings."""
-from . import enums
-from .config import ELO_K_FACTOR
+from .. import enums
+from ..config import ELO_K_FACTOR
 
 
 def transformed_rating(elo: int) -> int:

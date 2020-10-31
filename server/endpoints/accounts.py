@@ -14,7 +14,7 @@ import peewee
 import requests
 
 from . import helpers
-from .. import emails, enums, models, utils
+from .. import enums, models, utils
 
 
 def _validate_username(username: str):
@@ -116,7 +116,7 @@ def send_verification_email(user: models.User):
         f'Here is the code to verify your email address: '
         f'{user.email_verify_token}.'
     )
-    emails.send_email(user.email, message, 'Kasupel email verification')
+    utils.emails.send_email(user.email, message, 'Kasupel email verification')
 
 
 @helpers.endpoint('/accounts/verify_email', method='GET')

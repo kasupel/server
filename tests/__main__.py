@@ -26,8 +26,11 @@ database.db.create_tables(models.MODELS)
 
 # Run the tests.
 from .test_chess import TestChess    # noqa: F401,E402
+from .test_encryption import TestEncryption    # noqa: F401,E402
+from .test_hashing import TestHashing    # noqa: F401,E402
 from .test_images import TestImages    # noqa: F401,E402
 from .test_ratings import TestRatings    # noqa: F401,E402
+from .test_timing import TestTiming    # noqa: F401,E402
 
 unittest.main(exit=False)
 
