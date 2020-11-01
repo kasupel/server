@@ -47,5 +47,7 @@ class GameTest(ModelTest):
             fixed_extra_time=datetime.timedelta(0),
             time_increment_per_turn=datetime.timedelta(minutes=1),
             started_at=datetime.datetime.now(),
-            last_turn=datetime.datetime.now()
+            last_turn=datetime.datetime.now(),
+            host_time=datetime.timedelta(minutes=10),
+            away_time=datetime.timedelta(minutes=10)
         )

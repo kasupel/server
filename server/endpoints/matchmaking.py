@@ -33,7 +33,7 @@ def find_game(
     else:
         game.start_game(user)
         models.Notification.send(game.host, 'matchmaking.match_found', game)
-        events.has_started(game)
+        events.games.has_started(game)
     return {
         'game_id': game.id
     }
@@ -73,7 +73,7 @@ def accept_invitation(user: models.User, game: models.Game):
         raise utils.RequestError(2111)
     game.start_game(user)
     models.Notification.send(game.host, 'matchmaking.invite_accepted', game)
-    events.has_started(game)
+    events.games.has_started(game)
 
 
 @helpers.endpoint('/games/invites/<game>', method='DELETE')
@@ -82,7 +82,7 @@ def decline_invitation(user: models.User, game: models.Game):
     if game.invited != user:
         raise utils.RequestError(2111)
     if game.host_socket_id:
-        events.disconnect(
+        events.connections.disconnect(
             game.host_socket_id,
             reason=enums.DisconnectReason.INVITE_DECLINED
         )

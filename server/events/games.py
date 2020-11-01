@@ -8,6 +8,7 @@ import flask
 
 from . import connections, helpers
 from .. import enums, models, utils
+from ..utils import ratings
 
 
 def has_started(game: models.Game):
@@ -73,7 +74,7 @@ def end_game(
             game.winner = enums.Winner.HOST
     else:
         game.winner = enums.Winner.DRAW
-    game.host.elo, game.away.elo = utils.ratings.calculate(
+    game.host.elo, game.away.elo = ratings.calculate(
         game.host.elo, game.away.elo, game.winner
     )
     game.conclusion_type = reason
@@ -84,7 +85,7 @@ def end_game(
     helpers.send_game('game_end', {
         'game_state': get_game_state(game),
         'reason': reason.value
-    })
+    }, game=game)
     for socket in (game.host_socket_id, game.away_socket_id):
         if socket:
             connections.disconnect(

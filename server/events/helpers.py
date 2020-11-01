@@ -1,4 +1,6 @@
 """Helpers for all events, and setting up the server."""
+from __future__ import annotations
+
 import functools
 import json
 import typing
@@ -50,9 +52,14 @@ def send_user(name: str, data: dict[str, typing.Any]):
     send_room(name, data, flask.request.sid)
 
 
-def send_game(name: str, data: dict[str, typing.Any]):
-    """Send an event to both members of the currently connected game."""
-    send_room(name, data, str(flask.request.context.games.id))
+def send_game(
+        name: str, data: dict[str, typing.Any], game: models.Game = None):
+    """Send an event to both members of a game.
+
+    Defaults to the currently connected game.
+    """
+    game = game or flask.request.context.game
+    send_room(name, data, str(game.id))
 
 
 def send_opponent(name: str, data: dict[str, typing.Any]):

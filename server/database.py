@@ -66,3 +66,11 @@ class BaseModel(pw.Model):
             return cls.get(field == model_id)
         except cls.DoesNotExist:
             raise utils.RequestError(cls.KasupelMeta.not_found_error)
+
+    def refresh(self) -> BaseModel:
+        """Get a new instance representing the same row.
+
+        Useful for when the row has been updated in the database by a third
+        party (https://stackoverflow.com/a/32156865).
+        """
+        return type(self).get(self._pk_expr())

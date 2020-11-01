@@ -1,4 +1,6 @@
 """Handle connect and disconnect events."""
+from __future__ import annotations
+
 import flask
 
 import flask_socketio as sockets

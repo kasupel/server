@@ -427,7 +427,7 @@ class Notification(database.BaseModel):
             return
         notif = cls.create(user=user, type_code=type_code, game=game)
         if user.socket_id:
-            events.send_notification(user.socket_id, notif)
+            events.notifications.send_notification(user.socket_id, notif)
 
     def display(self) -> str:
         """Get the notification as it should be displayed to the user."""

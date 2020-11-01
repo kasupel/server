@@ -1,7 +1,7 @@
 """Test the timing module."""
 from datetime import datetime, timedelta
 
-from server import enums
+from server import enums, timing
 
 from .utils import GameTest
 
@@ -97,3 +97,57 @@ class TestTiming(GameTest):
             )
         )
         self.assertEqual(self.game.host_time, timedelta(days=5, minutes=5))
+
+    def test_catch_no_extra_time(self):
+        """Test timer_check catching a timeout with no extra time."""
+        self.game.fixed_extra_time = timedelta(0)
+        self.game.host_time = timedelta(minutes=10)
+        self.game.last_turn = datetime(year=2050, month=10, day=5)
+        self.game.save()
+        timing.timer_check(current_time=datetime(
+            year=2050, month=10, day=5, hour=1
+        ))
+        self.assertEqual(self.game.refresh().winner, enums.Winner.AWAY)
+
+    def test_no_catch_extra_time(self):
+        """Test not catching what would be a timeout if not for extra time."""
+        self.game.fixed_extra_time = timedelta(hours=1, minutes=30)
+        self.game.host_time = timedelta(days=1)
+        self.game.last_turn = datetime(year=1999, month=6, day=14)
+        self.game.save()
+        timing.timer_check(current_time=datetime(
+            year=1999, month=6, day=15, minute=30
+        ))
+        self.assertEqual(
+            self.game.refresh().winner, enums.Winner.GAME_NOT_COMPLETE
+        )
+
+    def test_catch_extra_time(self):
+        """Test timer_check catching a timeout with extra time."""
+        self.game.fixed_extra_time = timedelta(seconds=10)
+        self.game.away_time = timedelta(minutes=3, seconds=34)
+        self.game.last_turn = datetime(
+            year=2020, month=1, day=30, hour=13, minute=25, second=14
+        )
+        self.game.current_turn = enums.Side.AWAY
+        self.game.save()
+        timing.timer_check(current_time=datetime(
+            year=2020, month=1, day=30, hour=13, minute=28, second=59
+        ))
+        self.assertEqual(
+            self.game.refresh().winner, enums.Winner.HOST
+        )
+
+    def test_no_catch_no_extra_time(self):
+        """Test timer_check not catching what is not a timeout."""
+        self.game.fixed_extra_time = timedelta(0)
+        self.game.away_time = timedelta(minutes=15)
+        self.game.last_turn = datetime(year=2000, month=4, day=20)
+        self.game.current_turn = enums.Side.AWAY
+        self.game.save()
+        timing.timer_check(current_time=datetime(
+            year=2000, month=4, day=20, hour=0, minute=14, second=55
+        ))
+        self.assertEqual(
+            self.game.refresh().winner, enums.Winner.GAME_NOT_COMPLETE
+        )

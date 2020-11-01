@@ -3,31 +3,32 @@ from __future__ import annotations
 
 import datetime
 
-from . import config, enums, events, models
+from . import config, enums, models
+from .events import games, socketio
 
 
 def timer_check(current_time: datetime.datetime = None):
     """Check for games where the player on move has timed out."""
     current_time = current_time or datetime.datetime.now()
-    games = models.Game.select().where(
+    timed_out_games = models.Game.select().where(
         (
             (models.Game.current_turn == enums.Side.HOST)
             & ((
                 models.Game.last_turn
                 + models.Game.host_time
                 + models.Game.fixed_extra_time
-            ) > current_time)
+            ) < current_time)
         ) | (
             (models.Game.current_turn == enums.Side.AWAY)
             & ((
                 models.Game.last_turn
                 + models.Game.away_time
                 + models.Game.fixed_extra_time
-            ) > current_time)
+            ) < current_time)
         )
     )
-    for game in games:
-        events.end_game(game)
+    for game in timed_out_games:
+        games.end_game(game, enums.Conclusion.TIME, winner_on_move=False)
 
 
 def timer_loop():    # pragma: no cover
@@ -37,7 +38,7 @@ def timer_loop():    # pragma: no cover
         return
     while True:
         timer_check()
-        events.socketio.sleep(config.TIMER_CHECK_INTERVAL)
+        socketio.sleep(config.TIMER_CHECK_INTERVAL)
 
 
 class Timer:
