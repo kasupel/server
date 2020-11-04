@@ -61,6 +61,7 @@
         "3114": "Unknown value for enum.",
         "3115": "Image must be gif, jpeg, png or webp.",
         "3116": "Image must be less than 1 MB.",
+        "3117": "Positive value required.",
     "3200": "Pagination error.",
         "3201": "Page does not exist.",
     "3300": "URL error.",

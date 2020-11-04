@@ -59,7 +59,7 @@ class BaseModel(pw.Model):
             base_converter = utils.converters.int_converter
         elif isinstance(field, pw.CharField):
             base_converter = lambda x: x    # noqa: E731
-        else:
+        else:    # pragma: no cover
             raise RuntimeError(f'Converter needed for field {field!r}.')
         model_id = base_converter(value)
         try:

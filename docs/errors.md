@@ -97,6 +97,7 @@ Below is a list of error codes and their human readable explanations:
 - 3114 - Unknown value for enum.
 - 3115 - Image must be gif, jpeg, png or webp.
 - 3116 - Image must be less than 1 MB.
+- 3117 - Positive value required.
 
 ### 3200 - Pagination error
 

@@ -481,6 +481,6 @@ AwayUser = User.alias()
 InvitedUser = User.alias()
 
 
-MODELS = [User, Session, Game, Piece, GameState]
+MODELS = [User, Session, Game, Piece, GameState, Notification]
 
 database.db.create_tables(MODELS)

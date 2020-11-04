@@ -19,18 +19,19 @@ cov = coverage.Coverage(source_pkgs=(
 cov.start()
 
 # Wipe the database ready for tests.
-from server import database, models    # noqa: E402
+from server import database, models
 
 database.db.drop_tables(models.MODELS)
 database.db.create_tables(models.MODELS)
 
 # Run the tests.
-from .test_chess import TestChess    # noqa: F401,E402
-from .test_encryption import TestEncryption    # noqa: F401,E402
-from .test_hashing import TestHashing    # noqa: F401,E402
-from .test_images import TestImages    # noqa: F401,E402
-from .test_ratings import TestRatings    # noqa: F401,E402
-from .test_timing import TestTiming    # noqa: F401,E402
+from .test_chess import TestChess
+from .test_converters import TestConverters, TestModelConverters
+from .test_encryption import TestEncryption
+from .test_hashing import TestHashing
+from .test_images import TestImages
+from .test_ratings import TestRatings
+from .test_timing import TestTiming
 
 unittest.main(exit=False)
 

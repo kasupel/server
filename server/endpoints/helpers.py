@@ -89,8 +89,10 @@ def endpoint(
     """Create a wrapper for an endpoint."""
     method = method.upper()
     if method not in ('GET', 'DELETE', 'POST', 'PATCH'):
+        # pragma: no cover
         raise RuntimeError(f'Unhandled method "{method}".')
     if encrypt_request and method not in ('POST', 'PATCH'):
+        # pragma: no cover
         raise RuntimeError('Cannot encrypt bodyless request.')
 
     def wrapper(main: typing.Callable) -> typing.Callable:
@@ -129,7 +131,7 @@ def endpoint(
                 return flask.send_file(
                     io.BytesIO(response), cache_timeout=31536000
                 )
-            else:
+            else:    # pragma: no cover
                 raise RuntimeError(f'Unkown return type {return_type}.')
 
         flask_wrapped = endpoints.app.route(url, methods=[method])(

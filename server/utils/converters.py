@@ -16,7 +16,7 @@ def int_converter(value: typing.Union[str, int]) -> int:
     """Convert an integer parameter."""
     try:
         return int(value)
-    except ValueError:
+    except (ValueError, TypeError):
         raise utils.RequestError(3111)
 
 
@@ -47,6 +47,10 @@ def _timedelta_converter(value: typing.Union[str, int]) -> datetime.timedelta:
     This should be passed as an integer representing seconds.
     """
     value = int_converter(value)
+    if value <= 0:
+        # Negative timedeltas are valid but we don't have a use for them in
+        # this app.
+        raise utils.RequestError(3117)
     return datetime.timedelta(seconds=value)
 
 
@@ -62,7 +66,7 @@ def _make_enum_converter(enum_class: enum.Enum) -> typing.Callable:
     return enum_converter
 
 
-def _plain_converter(converter: typing.Callable) -> typing.Callable:
+def _required_value(converter: typing.Callable) -> typing.Callable:
     """Wrap a converter and raise an error if no value is provided."""
     @functools.wraps(converter)
     def main(value: typing.Any) -> typing.Any:
@@ -88,17 +92,21 @@ def get_converters(
     converters = {}
     authenticated = False
     params = list(inspect.signature(endpoint).parameters.items())
-    if '.' in endpoint.__qualname__:
-        # Is a method of a class, so discard the first parameter ('self').
-        # FIXME: This won't always work, for example with a @staticmethod.
-        # Note that we cannot use inspect.ismethod since that returns False
-        # for unbound methods.
-        params.pop(0)
-    for n, param in enumerate(params):
+    could_be_self_or_cls = True
+    could_be_user = True
+    for param in params:
         name, details = param
-        if n == 0 and name == 'user':
-            authenticated = True
+        if could_be_self_or_cls and name in ('self', 'cls'):
+            # This won't work if there is a bound first parameter called
+            # something else but it seems to be the best we can do.
+            could_be_self_or_cls = False
             continue
+        could_be_self_or_cls = False
+        if could_be_user and name == 'user':
+            authenticated = True
+            could_be_user = False
+            continue
+        could_be_user = False
         type_hint = details.annotation
         if isinstance(type_hint, str):
             # If `from __future__ import annotations` is used, annotations
@@ -112,15 +120,17 @@ def get_converters(
             converter = int_converter
         elif type_hint == bytes:
             converter = _bytes_converter
+        elif (
+                (is_generic and typing.get_origin(type_hint) == dict)
+                or type_hint == dict):
+            converter = _dict_converter
         elif type_hint == datetime.timedelta:
             converter = _timedelta_converter
         elif is_class and issubclass(type_hint, peewee.Model):
             converter = type_hint.converter
         elif is_class and issubclass(type_hint, enum.Enum):
             converter = _make_enum_converter(type_hint)
-        elif is_generic and typing.get_origin(type_hint) == dict:
-            converter = _dict_converter
-        else:
+        else:    # pragma: no cover
             type_hint_name = getattr(type_hint, '__name__', type_hint)
             raise RuntimeError(
                 f'Converter needed for argument {name} ({type_hint_name}).'
@@ -128,7 +138,7 @@ def get_converters(
         if details.default != inspect._empty:
             converter = _default_converter(details.default, converter)
         else:
-            converter = _plain_converter(converter)
+            converter = _required_value(converter)
         converters[name] = converter
     return authenticated, converters
 
@@ -158,7 +168,7 @@ def wrap(endpoint: typing.Callable) -> typing.Callable:
         except TypeError as e:
             if utils.is_wrong_arguments(e, endpoint):
                 raise utils.RequestError(3102)
-            else:
+            else:    # pragma: no cover
                 raise e
 
     return wrapped
