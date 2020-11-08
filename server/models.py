@@ -45,13 +45,9 @@ class TurnCounter:
         # _turn_number is internal, but this is the class that changes it
         return self.game._turn_number
 
-    def __str__(self) -> str:
-        """Get the turn number as a string."""
-        return str(self.game._turn_number)
-
     def __iadd__(self, value: int):
         """Increment the turn."""
-        if value != 1:
+        if value != 1:    # pragma: no cover
             raise ValueError(
                 'Cannot increment the turn counter by more than one.'
             )

@@ -21,8 +21,8 @@ Move = collections.namedtuple('Move', [
 ])
 
 
-class TestChess(GameTest):
-    """Test the chess logic."""
+class ChessTest(GameTest):
+    """Test class with utility functions for testing chess."""
 
     def assert_layout(
             self, layout: typing.Dict[typing.Tuple[int, int], str],
@@ -41,13 +41,8 @@ class TestChess(GameTest):
                 actual_type = piece.piece_type if piece else None
                 self.assertEqual(expected_type, actual_type)
 
-    def _test_make_move(
-            self, layout: typing.Dict[typing.Tuple[int, int], str],
-            move: Move, expected_valid: bool = True, host_turn: bool = True):
-        """Test validation of some move."""
-        if not host_turn:
-            self.game.current_turn = enums.Side.AWAY
-        # Lay out the board.
+    def make_layout(self, layout: typing.Dict[typing.Tuple[int, int], str]):
+        """Lay out the board in some way."""
         for rank, file in layout:
             symbol = layout[(rank, file)]
             piece_type = PIECES[symbol[0].lower()]
@@ -57,6 +52,32 @@ class TestChess(GameTest):
                 game=self.game, has_moved='x' in symbol,
                 first_move_last_turn='y' in symbol
             )
+
+    def assert_moves(
+            self, layout: typing.Dict[typing.Tuple[int, int], str],
+            moves: typing.Tuple[typing.Tuple[int, int]],
+            host_turn: bool = True):
+        """Check that the allowed moves are correct."""
+        if not host_turn:
+            self.game.current_turn = enums.Side.AWAY
+        self.make_layout(layout)
+        actual_moves = self.game.game_mode.possible_moves(
+            self.game.current_turn
+        )
+        expected_moves = []
+        for move in moves:
+            if len(move) == 4:
+                move = (*move, None)    # Add promotion.
+            expected_moves.append(move)
+        self.assertEqual(set(actual_moves), set(expected_moves))
+
+    def _test_make_move(
+            self, layout: typing.Dict[typing.Tuple[int, int], str],
+            move: Move, expected_valid: bool = True, host_turn: bool = True):
+        """Test validation of some move."""
+        if not host_turn:
+            self.game.current_turn = enums.Side.AWAY
+        self.make_layout(layout)
         # Try to make the move.
         actual_valid = self.game.game_mode.make_move(
             start_rank=move.start_rank, start_file=move.start_file,
@@ -78,54 +99,9 @@ class TestChess(GameTest):
         del layout[(move.start_rank, move.start_file)]
         self.assert_layout(layout)
 
-    def test_board_layout(self):
-        """Check that the board is initially laid out correctly."""
-        self.game.game_mode.layout_board()
-        layout = {}
-        for file, piece in enumerate('RNBQKBNR'):
-            layout[0, file] = piece
-            layout[1, file] = 'P'
-            layout[6, file] = 'p'
-            layout[7, file] = piece.lower()
-        self.assert_layout(layout)
 
-    def test_off_board(self):
-        """Test trying to move a piece off the board."""
-        self._test_make_move(
-            {(3, 0): 'R'}, Move(
-                start_rank=3, start_file=0, end_rank=8, end_file=0,
-                promotion=None
-            ), expected_valid=False
-        )
-
-    def test_no_move(self):
-        """Test making a move to the same square."""
-        self._test_make_move(
-            {(3, 2): 'K'}, Move(
-                start_rank=3, start_file=2, end_rank=3, end_file=2,
-                promotion=None
-            ), expected_valid=False
-        )
-
-    def test_move_opponent(self):
-        """Test trying to move a piece belonging to the opponent."""
-        self._test_make_move(
-            {(6, 4): 'p'}, Move(
-                start_rank=6, start_file=4, end_rank=5, end_file=4,
-                promotion=None
-            ), expected_valid=False
-        )
-
-    def test_move_empty(self):
-        """Test trying to move a non-existant piece."""
-        self._test_make_move(
-            {}, Move(
-                start_rank=3, start_file=4, end_rank=3, end_file=6,
-                promotion=None
-            ), expected_valid=False
-        )
-
-    # Rooks
+class TestChessRooks(ChessTest):
+    """Tests specific to rook movement."""
 
     def test_diagonal_rook(self):
         """Test trying to move a rook diagonally."""
@@ -163,7 +139,9 @@ class TestChess(GameTest):
             ), expected_valid=False
         )
 
-    # Bishops
+
+class TestChessBishops(ChessTest):
+    """Tests specific to bishops."""
 
     def test_straight_bishop(self):
         """Test trying to move a bishop in a straight line."""
@@ -201,7 +179,8 @@ class TestChess(GameTest):
             ), expected_valid=False
         )
 
-    # Pawns
+class TestChessPawns(ChessTest):
+    """Tests specific to pawn movement."""
 
     def test_pawn_sideways(self):
         """Test trying to move a pawn right 2."""
@@ -329,7 +308,9 @@ class TestChess(GameTest):
             ), expected_valid=False
         )
 
-    # Knights
+
+class TestChessKnights(ChessTest):
+    """Tests specific to knight movement."""
 
     def test_knight_straight(self):
         """Test trying to move a knight in a straight line."""
@@ -376,7 +357,9 @@ class TestChess(GameTest):
             ), expected_valid=False
         )
 
-    # Kings
+
+class TestChessKings(ChessTest):
+    """Tests specific to king movement and castling."""
 
     def test_promote_king(self):
         """Test trying to promote a king."""
@@ -468,7 +451,9 @@ class TestChess(GameTest):
             ), expected_valid=False, host_turn=False
         )
 
-    # Queens
+
+class TestChessQueens(ChessTest):
+    """Tests specific to queen movement."""
 
     def test_queen_knights_move(self):
         """Test trying to move a queen in a knight's move."""
@@ -502,6 +487,59 @@ class TestChess(GameTest):
         self._test_make_move(
             {(0, 3): 'Q', (1, 3): 'p'}, Move(
                 start_rank=0, start_file=3, end_rank=5, end_file=3,
+                promotion=None
+            ), expected_valid=False
+        )
+
+
+class TestChess(
+        TestChessPawns, TestChessRooks, TestChessKnights, TestChessBishops,
+        TestChessQueens, TestChessKings):
+    """Collate all chess tests and add some non-piece-specific ones."""
+
+    def test_board_layout(self):
+        """Check that the board is initially laid out correctly."""
+        self.game.game_mode.layout_board()
+        layout = {}
+        for file, piece in enumerate('RNBQKBNR'):
+            layout[0, file] = piece
+            layout[1, file] = 'P'
+            layout[6, file] = 'p'
+            layout[7, file] = piece.lower()
+        self.assert_layout(layout)
+
+    def test_off_board(self):
+        """Test trying to move a piece off the board."""
+        self._test_make_move(
+            {(3, 0): 'R'}, Move(
+                start_rank=3, start_file=0, end_rank=8, end_file=0,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_no_move(self):
+        """Test making a move to the same square."""
+        self._test_make_move(
+            {(3, 2): 'K'}, Move(
+                start_rank=3, start_file=2, end_rank=3, end_file=2,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_move_opponent(self):
+        """Test trying to move a piece belonging to the opponent."""
+        self._test_make_move(
+            {(6, 4): 'p'}, Move(
+                start_rank=6, start_file=4, end_rank=5, end_file=4,
+                promotion=None
+            ), expected_valid=False
+        )
+
+    def test_move_empty(self):
+        """Test trying to move a non-existant piece."""
+        self._test_make_move(
+            {}, Move(
+                start_rank=3, start_file=4, end_rank=3, end_file=6,
                 promotion=None
             ), expected_valid=False
         )
