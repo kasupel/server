@@ -27,11 +27,11 @@ class EventContext:
             game = models.Game.get_or_none(
                 models.Game.away_socket_id == sid
             )
+            if not game:
+                raise utils.RequestError(4101)
             side = enums.Side.AWAY
             user = game.away
             opponent = game.host
-            if not game:
-                raise utils.RequestError(4101)
         self.game = game
         self.side = side
         self.user = user
