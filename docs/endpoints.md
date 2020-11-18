@@ -8,7 +8,7 @@ Some endpoints require credentials, in the form of a session ID and session toke
 
 ## Encryption
 
-Some endpoints require that the payload be encrypted. These endpoints will all use methods with bodies (here, just `POST` and `PATCH`). The server's public key is available at `/rsa_key`. Encryption should be done using the RSA algorithm with OAEP padding (MGF1 mask generation and SHA256 hashing). Encryption is required for endpoints marked with `[E]` below, and will not be understood on any other endpoints.
+Some endpoints require that the payload be encrypted. These endpoints will all use methods with bodies (here, just `POST` and `PATCH`). The server's public key is available at `/rsa_key`. Encryption should be done using the RSA algorithm with OAEP padding (MGF1 mask generation and SHA256 hashing). The encrypted bytes should then be encrypted with base 64 before being sent. Encryption is required for endpoints marked with `[E]` below, and will not be understood on any other endpoints.
 
 ## Pagination
 

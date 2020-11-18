@@ -1,6 +1,7 @@
 """Helpers for all endpoints."""
 from __future__ import annotations
 
+import base64
 import functools
 import io
 import json
@@ -13,6 +14,7 @@ import flask
 import peewee
 
 from .. import database, endpoints, models, utils
+from ..utils import encryption
 
 
 def paginate(
@@ -33,7 +35,7 @@ def paginate(
 def _decrypt_request(raw: bytes) -> dict[str, typing.Any]:
     """Decrypt a JSON object encrypted with our public key."""
     try:
-        raw_json = utils.encryption.decrypt_message(raw)
+        raw_json = encryption.decrypt_message(base64.b64decode(raw))
     except ValueError:
         raise utils.RequestError(3113)
     try:
@@ -147,7 +149,7 @@ def endpoint(
 )
 def get_public_key() -> str:
     """Get our public RSA key."""
-    return utils.encryption.PUBLIC_KEY
+    return encryption.PUBLIC_KEY
 
 
 @endpoints.app.errorhandler(404)
