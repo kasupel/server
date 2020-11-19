@@ -62,13 +62,12 @@ Parameters:
 
 Resends a verification email to the logged in user.
 
-### `GET /accounts/verify_email`
+### `[A] GET /accounts/verify_email`
 
 Verifies the email account associated with the logged in user. `token` is a 6 character token that has been emailed to the user.
 
 Parameters:
 
-- `username` ([string](./types.md#string))
 - `token` ([string](./types.md#string))
 
 ### `[A][E] PATCH /accounts/me`

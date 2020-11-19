@@ -120,17 +120,13 @@ def send_verification_email(user: models.User):
 
 
 @helpers.endpoint('/accounts/verify_email', method='GET')
-def verify_email(username: str, token: str):
+def verify_email(user: models.User, token: str):
     """Verify an email address."""
-    try:
-        user = models.User.get(
-            models.User.username == username,
-            models.User.email_verify_token == token
-        )
-    except peewee.DoesNotExist:
+    if user.email_verify_token == token:
+        user.email_verified = True
+        user.save()
+    else:
         raise utils.RequestError(1202)
-    user.email_verified = True
-    user.save()
 
 
 @helpers.endpoint('/accounts/me', method='PATCH', encrypt_request=True)
