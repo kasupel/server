@@ -122,7 +122,12 @@ Get a paginated list of the user's notifications.
 Returns:
 
 - `notifications` ([list](./types.md#list-of-some-other-type) of [`Notification` objects](./types.md#notification))
-- `unread_count` ([integer](./types.md#integer), the number of unread notifications the user has)
+
+### `[A] GET /accounts/notifications/unread_count`
+
+Check how many unread notifications the user has
+
+- `count` ([integer](./types.md#integer), the number of unread notifications the user has)
 
 ### `[A] POST /accounts/notifications/ack`
 
