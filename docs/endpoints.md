@@ -1,7 +1,5 @@
 # HTTP Endpoints
 
-TODO: Document errors in a separate document.
-
 ## Authorisation
 
 Some endpoints require credentials, in the form of a session ID and session token (see [authorisation](./authorisation.md)). These should be passed through the `session_id` and `session_token` parameters. They are required on endpoints marked with `[A]` below, but will be accepted on any endpoints.
@@ -116,6 +114,23 @@ Get a list of all users, sorted by descending ELO.
 Returns:
 
 - `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user), without emails)
+
+### `[A][P] GET /accounts/notifications`
+
+Get a paginated list of the user's notifications.
+
+Returns:
+
+- `notifications` ([list](./types.md#list-of-some-other-type) of [`Notification` objects](./types.md#notification))
+- `unread_count` ([integer](./types.md#integer), the number of unread notifications the user has)
+
+### `[A] POST /accounts/notifications/ack`
+
+Mark a notification as read.
+
+Parameters:
+
+- `notification` ([integer](./types.md#integer), the ID of the notification)
 
 ### `[A][P] GET /games/invites`
 
