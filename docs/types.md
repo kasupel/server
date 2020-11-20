@@ -128,8 +128,6 @@ Fields:
 
 Note that the `message` is just an example (English) message that could be displayed to the user. Implementations are encouraged to provide their own messages, which may be localised.
 
-TODO: Add documentation of type codes.
-
 ## Enums
 
 Enums are expressed as [integers](#integer), which may be any of a set specified below, and each have a specific meaning.
