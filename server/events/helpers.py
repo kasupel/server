@@ -37,6 +37,7 @@ class EventContext:
         self.user = user
         self.opponent = opponent
         self.event_id = event_id
+        self.has_responded = False
 
 
 def send_room(name: str, data: dict[str, typing.Any], room: str):
@@ -52,6 +53,7 @@ def send_user(name: str, data: dict[str, typing.Any]):
     """Send an event to the currently connected user."""
     if flask.request.context.event_id:
         data['response_to'] = flask.request.context.event_id
+        flask.request.has_responded = True
     send_room(name, data, flask.request.sid)
 
 
@@ -101,18 +103,21 @@ def event(name: str) -> typing.Callable:
                 flask.request.context = EventContext(event_id)
                 converter_wrapped(**kwargs)
             except utils.RequestError as error:
-                error_dict = error.as_dict
-                if event_id is not None:
-                    error_dict['response_to'] = event_id
                 if name == 'connect':
                     # Don't accept connection if there is an error on connect.
+                    error_dict = error.as_dict
+                    if event_id is not None:
+                        error_dict['response_to'] = event_id
                     raise sockets.ConnectionRefusedError(
                         json.dumps(error_dict)
                     )
                 else:
-                    events.socketio.emit(
-                        'bad_request', error_dict, room=flask.request.sid
-                    )
+                    send_user('bad_request', error.as_dict)
+            else:
+                if (
+                        flask.request.context.event_id
+                        and not flask.request.context.has_responded):
+                    send_user('ack', {})
 
         flask_wrapped = events.socketio.on(name)(return_wrapped)
         return flask_wrapped

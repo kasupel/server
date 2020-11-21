@@ -118,3 +118,7 @@ Indicates that the user has received a new notification.
 ### `bad_request`
 
 Indicates that an event (possibly indicated by the `response_to` field, see [Server responses](#server-responses)) sent by the client contained an error. Fields are the same as [an `Error` object](./types.md#error).
+
+### `ack`
+
+Indicates that an event indicated by the `response_to` field was received and processed without error. This will only be sent if the event included an `event_id` field and no other direct response to it was sent.
