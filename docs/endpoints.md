@@ -118,6 +118,28 @@ Returns:
 
 - `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user), without emails)
 
+### `[A][P] GET /accounts/notifications`
+
+Get a paginated list of the user's notifications.
+
+Returns:
+
+- `notifications` ([list](./types.md#list-of-some-other-type) of [`Notification` objects](./types.md#notification))
+
+### `[A] GET /accounts/notifications/unread_count`
+
+Check how many unread notifications the user has
+
+- `count` ([integer](./types.md#integer), the number of unread notifications the user has)
+
+### `[A] POST /accounts/notifications/ack`
+
+Mark a notification as read.
+
+Parameters:
+
+- `notification` ([integer](./types.md#integer), the ID of the notification)
+
 ### `[A][P] GET /games/invites`
 
 Get a list of games the logged in user has been invited too.
