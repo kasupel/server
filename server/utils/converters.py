@@ -86,14 +86,14 @@ def _default_converter(
 
 
 def get_converters(
-        endpoint: typing.Callable) -> tuple[
+        endpoint: typing.Callable, user_arg_special: bool) -> tuple[
             bool, dict[str, typing.Callable]]:
     """Detect the type hints used and provide converters for them."""
     converters = {}
     authenticated = False
     params = list(inspect.signature(endpoint).parameters.items())
     could_be_self_or_cls = True
-    could_be_user = True
+    could_be_user = user_arg_special
     for param in params:
         name, details = param
         if could_be_self_or_cls and name in ('self', 'cls'):
@@ -143,9 +143,12 @@ def get_converters(
     return authenticated, converters
 
 
-def wrap(endpoint: typing.Callable) -> typing.Callable:
+def wrap(
+        endpoint: typing.Callable,
+        user_arg_special: bool = False,
+        event_id_arg_special: bool = False) -> typing.Callable:
     """Wrap an endpoint to convert its arguments."""
-    authenticated, converters = get_converters(endpoint)
+    authenticated, converters = get_converters(endpoint, user_arg_special)
 
     @functools.wraps(endpoint)
     def wrapped(
@@ -154,12 +157,14 @@ def wrap(endpoint: typing.Callable) -> typing.Callable:
         """Convert arguments before calling the endpoint."""
         if authenticated and not kwargs.get('user'):
             raise utils.RequestError(1301)
-        elif kwargs.get('user') and not authenticated:
+        elif kwargs.get('user') and user_arg_special and not authenticated:
             del kwargs['user']
         converted = {}
         for kwarg in kwargs:
             if kwarg in converters:
                 converted[kwarg] = converters[kwarg](kwargs[kwarg])
+            elif kwarg == 'event_id' and event_id_arg_special:
+                converted[kwarg] = int_converter(kwargs[kwarg])
             else:
                 converted[kwarg] = kwargs[kwarg]
         try:

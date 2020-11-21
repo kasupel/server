@@ -101,7 +101,7 @@ def endpoint(
         """Wrap an endpoint."""
         if database_transaction:
             main = database.db.atomic()(main)
-        converter_wrapped = utils.converters.wrap(main)
+        converter_wrapped = utils.converters.wrap(main, user_arg_special=True)
 
         @functools.wraps(main)
         def return_wrapped(

@@ -10,6 +10,10 @@ Types used below are as documented in [types](./types.md).
 
 Connecting is done under the default namespace. As well as [the `Authorization` header](./authorisation.md#connecting-to-a-socket), the `Game-ID` header must be sent. This is the ID of the game to connect to. It must be a game that you are a part of that has not finished.
 
+## Server responses
+
+Certain events are sent to the client as a direct response to an event the client has just sent to the server. To aid in identifying these, the client may pass `event_id` as a parameter with any event. Any direct responses to that event, including `bad_request`, will include a `response_to` field with the same value. The value must be an integer.
+
 ## Client initiated events
 
 ### `game_state` (client)
@@ -110,3 +114,7 @@ Note `draw_claim` will only be "Agreed draw", "threefold repetition" or "50 move
 Fields are the same as [a `Notification` object](./types.md#notification).
 
 Indicates that the user has received a new notification.
+
+### `bad_request`
+
+Indicates that an event (possibly indicated by the `response_to` field, see [Server responses](#server-responses)) sent by the client contained an error. Fields are the same as [an `Error` object](./types.md#error).

@@ -1,6 +1,6 @@
 # Errors
 
-Below is a list of error codes and their human readable explanations:
+Below is a list of error codes and their human readable explanations. Note that error codes ending in a `0` only indicate subgroups, and will not themselves be used.
 
 ## 1000 - Accounts error
 

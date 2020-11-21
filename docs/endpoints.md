@@ -1,7 +1,5 @@
 # HTTP Endpoints
 
-TODO: Document errors in a separate document.
-
 ## Authorisation
 
 Some endpoints require credentials, in the form of a session ID and session token (see [authorisation](./authorisation.md)). These should be passed through the `session_id` and `session_token` parameters. They are required on endpoints marked with `[A]` below, but will be accepted on any endpoints.
@@ -25,6 +23,10 @@ For body-less endpoints (here, just `GET` and `DELETE`), parameters should be se
 ## Responses
 
 Responses will all be in JSON (with the exception of `/rsa_key`, not documented below). Return value names below refer to JSON fields. See [types](./types.md) for an explanation of the return value types.
+
+## Errors
+
+If there is an error in the request, the server will respond with an [Error object](./types.md#error) and a non-200 status code.
 
 ## Endpoints
 
