@@ -224,6 +224,17 @@ def get_notifications(
     }
 
 
+@helpers.endpoint('/accounts/notifications/unread_count', method='GET')
+def unread_notification_count(
+        user: models.User, page: int = 0) -> dict[str, typing.Any]:
+    """Check how many unread notifications the user has."""
+    count = models.Notification.select().where(
+        models.Notification.user == user,
+        models.Notification.read == False    # noqa:E712
+    ).count()
+    return {'count': count,}
+
+
 @helpers.endpoint('/accounts/notifications/ack/', method='POST')
 def acknowledge_notification(
         user: models.User, notification: models.Notification):
