@@ -172,7 +172,7 @@ def get_own_account(user: models.User) -> dict[str, typing.Any]:
     return data
 
 
-@helpers.endpoint('/user/<account>', method='GET')
+@helpers.endpoint('/users/<account>', method='GET')
 def get_account(account: models.User) -> dict[str, typing.Any]:
     """Get a user account."""
     return account.to_json()
