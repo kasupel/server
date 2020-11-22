@@ -218,11 +218,14 @@ class User(database.BaseModel):
     def to_json(
             self, hide_email: bool = True) -> dict[str, typing.Any]:
         """Get a dict representation of this user."""
+        avatar_url = (
+            f'/media/avatar/{self.avatar_name}' if self.avatar_name else None
+        )
         response = {
             'id': self.id,
             'username': self.username,
             'elo': self.elo,
-            'avatar_url': f'/media/avatar/{self.avatar_name}',
+            'avatar_url': avatar_url,
             'created_at': int(self.created_at.timestamp())
         }
         if not hide_email:
