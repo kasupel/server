@@ -15,6 +15,7 @@ import requests
 
 from . import helpers
 from .. import enums, models, utils
+from ..utils import emails
 
 
 def _validate_username(username: str):
@@ -116,7 +117,7 @@ def send_verification_email(user: models.User):
         f'Here is the code to verify your email address: '
         f'{user.email_verify_token}.'
     )
-    utils.emails.send_email(user.email, message, 'Kasupel email verification')
+    emails.send_email(user.email, message, 'Kasupel email verification')
 
 
 @helpers.endpoint('/accounts/verify_email', method='GET')
