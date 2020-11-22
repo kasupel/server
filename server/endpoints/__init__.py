@@ -1,2 +1,5 @@
-"""Load all endpoints."""
-from . import accounts, games, matchmaking    # noqa: F401
+"""Create the Flask app."""
+import flask
+
+
+app = flask.Flask(__name__)

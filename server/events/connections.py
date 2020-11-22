@@ -1,11 +1,12 @@
 """Handle connect and disconnect events."""
+from __future__ import annotations
+
 import flask
 
 import flask_socketio as sockets
 
 from . import games, helpers
-from .. import enums, models
-from ..endpoints import helpers as endpoint_helpers
+from .. import enums, models, utils
 
 
 def disconnect(socket_id: str, reason: enums.DisconnectReason):
@@ -19,23 +20,23 @@ def parse_connect_headers() -> tuple[models.Session, models.Game]:
     # Parse the authorisation header.
     authorisation = flask.request.headers.get('Authorization')
     if not authorisation:
-        raise helpers.RequestError(3411)
+        raise utils.RequestError(3411)
     try:
         auth_typ, auth_key = authorisation.split()
     except ValueError:
-        raise helpers.RequestError(3412)
+        raise utils.RequestError(3412)
     if auth_typ.lower() != 'SessionKey':
-        raise helpers.RequestError(3412)
+        raise utils.RequestError(3412)
     # The header is in <auth_type> <auth> format.
     try:
         session_id, session_token = auth_key.split('|')
     except ValueError:
-        raise helpers.RequestError(3413)
-    session = endpoint_helpers.validate_session_key(session_id, session_token)
+        raise utils.RequestError(3413)
+    session = models.Session.validate_session_key(session_id, session_token)
     # Parse the game ID header.
     game_id = flask.request.headers.get('Game-ID')
     if not game_id:
-        raise helpers.RequestError(3421)
+        raise utils.RequestError(3421)
     game = models.Game.converter(game_id)
     return session, game
 
@@ -46,9 +47,9 @@ def connect():
     session, game = parse_connect_headers()
     # We have the game and session that is being used.
     if session.user not in (game.host, game.away):
-        raise helpers.RequestError(2201)
+        raise utils.RequestError(2201)
     if game.ended_at:
-        raise helpers.RequestError(2202)
+        raise utils.RequestError(2202)
     if game.host == session.user:
         old_socket = game.host_socket_id
         game.host_socket_id = flask.request.sid

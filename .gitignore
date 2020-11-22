@@ -1,2 +1,6 @@
 config.json
 __pycache__
+.coverage
+coverage_report
+private_key.pem
+.vscode

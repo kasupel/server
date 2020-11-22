@@ -3,36 +3,42 @@ from __future__ import annotations
 
 import datetime
 
-from . import config, enums, events, models
+from . import config, enums, models
+from .events import games, socketio
 
 
-def timer_loop():
-    """Loop to check for games where the player on move has timed out."""
+def timer_check(current_time: datetime.datetime = None):
+    """Check for games where the player on move has timed out."""
+    current_time = current_time or datetime.datetime.now()
+    timed_out_games = models.Game.select().where(
+        (
+            (models.Game.current_turn == enums.Side.HOST)
+            & ((
+                models.Game.last_turn
+                + models.Game.host_time
+                + models.Game.fixed_extra_time
+            ) < current_time)
+        ) | (
+            (models.Game.current_turn == enums.Side.AWAY)
+            & ((
+                models.Game.last_turn
+                + models.Game.away_time
+                + models.Game.fixed_extra_time
+            ) < current_time)
+        )
+    )
+    for game in timed_out_games:
+        games.end_game(game, enums.Conclusion.TIME, winner_on_move=False)
+
+
+def timer_loop():    # pragma: no cover
+    """Loop timer_check forever."""
     if not config.TIMER_CHECK_INTERVAL:
         # The loop is disabled, we will rely on client reports.
         return
     while True:
-        now = datetime.datetime.now()
-        games = models.Game.select().where(
-            (
-                (models.Game.current_turn == enums.Side.HOST)
-                & ((
-                    models.Game.last_turn
-                    + models.Game.host_time
-                    + models.Game.fixed_extra_time
-                ) > now)
-            ) | (
-                (models.Game.current_turn == enums.Side.AWAY)
-                & ((
-                    models.Game.last_turn
-                    + models.Game.away_time
-                    + models.Game.fixed_extra_time
-                ) > now)
-            )
-        )
-        for game in games:
-            events.end_game(game)
-        events.helpers.socketio.sleep(config.TIMER_CHECK_INTERVAL)
+        timer_check()
+        socketio.sleep(config.TIMER_CHECK_INTERVAL)
 
 
 class Timer:
@@ -47,10 +53,11 @@ class Timer:
         """Store the game we are interested in."""
         self.game = game
 
-    def turn_end(self, side: enums.Side):
+    def turn_end(
+            self, side: enums.Side, current_time: datetime.datetime = None):
         """Increment timers for the end of a turn."""
         last_turn = self.game.last_turn
-        current_time = datetime.datetime.now()
+        current_time = current_time or datetime.datetime.now()
         turn_length = current_time - last_turn
         if turn_length > self.game.fixed_extra_time:
             main_time_used = turn_length - self.game.fixed_extra_time

@@ -7,7 +7,8 @@ import typing
 import flask
 
 from . import connections, helpers
-from .. import enums, models, ratings
+from .. import enums, models, utils
+from ..utils import ratings
 
 
 def has_started(game: models.Game):
@@ -22,7 +23,7 @@ def assert_game_in_progress():
     """
     game = flask.request.context.game
     if game.ended_at or not game.started_at:
-        raise helpers.RequestError(2311)
+        raise utils.RequestError(2311)
 
 
 def get_game_state(game: models.Game) -> dict[str, typing.Any]:
@@ -84,7 +85,7 @@ def end_game(
     helpers.send_game('game_end', {
         'game_state': get_game_state(game),
         'reason': reason.value
-    })
+    }, game=game)
     for socket in (game.host_socket_id, game.away_socket_id):
         if socket:
             connections.disconnect(
@@ -114,7 +115,7 @@ def allowed_moves():
     assert_game_in_progress()
     game = flask.request.context.game
     if flask.request.context.side != game.current_turn:
-        raise helpers.RequestError(2312)
+        raise utils.RequestError(2312)
     helpers.send_user('allowed_moves', get_allowed_moves(game))
 
 
@@ -127,9 +128,9 @@ def move(move_data: dict[str, typing.Any]):
         end_game(game, enums.Conclusion.TIME)
         return
     if flask.request.context.side != game.current_turn:
-        raise helpers.RequestError(2312)
+        raise utils.RequestError(2312)
     if not game.game_mode.make_move(**move_data):
-        raise helpers.RequestError(2313)
+        raise utils.RequestError(2313)
     game.turn_number += 1
     end = game.game_state.game_is_over()
     if end in (
@@ -172,20 +173,20 @@ def claim_draw(reason: enums.Conclusion):
     ctx = flask.request.context
     if reason == enums.Conclusion.AGREED_DRAW:
         if (ctx.side == enums.Side.HOST) and not ctx.game.away_offering_draw:
-            raise helpers.RequestError(2322)
+            raise utils.RequestError(2322)
         if (ctx.side == enums.Side.AWAY) and not ctx.game.host_offering_draw:
-            raise helpers.RequestError(2322)
+            raise utils.RequestError(2322)
         helpers.send_opponent_notification('games.draw.agreed')
     elif reason == enums.Conclusion.THREEFOLD_REPETITION:
         if reason != ctx.game.other_valid_draw_claim:
-            raise helpers.RequestError(2322)
+            raise utils.RequestError(2322)
         helpers.send_opponent_notification('games.draw.threefold_repetition')
     elif reason == enums.Conclusion.FIFTY_MOVE_RULE:
         if reason != ctx.game.other_valid_draw_claim:
-            raise helpers.RequestError(2322)
+            raise utils.RequestError(2322)
         helpers.send_opponent_notification('games.draw.fifty_move_rule')
     else:
-        raise helpers.RequestError(2321)
+        raise utils.RequestError(2321)
     end_game(ctx.game, reason)
 
 
@@ -194,7 +195,7 @@ def timeout():
     """Handle a claim that the player on move has timed out."""
     assert_game_in_progress()
     if datetime.datetime.now() < flask.request.context.game.timer.boundary:
-        raise helpers.RequestError(2314)
+        raise utils.RequestError(2314)
     if flask.request.context.side == flask.request.context.game.current_turn:
         helpers.send_opponent_notification('games.win.time')
     else:

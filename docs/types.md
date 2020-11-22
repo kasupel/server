@@ -1,6 +1,6 @@
 # Types
 
-The API uses standard JSON almost exclusively, however in the documentation types may be referred to that are not standard JSON types. However, these values will all be expressed as standard JSON types, as explained below.
+The API uses standard JSON almost exclusively, however in the documentation types may be referred to that are not standard JSON types. These values will all be expressed as standard JSON types, as explained below.
 
 ## Native JSON types
 
@@ -127,6 +127,15 @@ Fields:
 - `read` ([boolean](#boolean))
 
 Note that the `message` is just an example (English) message that could be displayed to the user. Implementations are encouraged to provide their own messages, which may be localised.
+
+### Error
+
+An object representing an error in a client request or event.
+
+Fields:
+
+- `error` ([integer](#integer), see [Errors](./errors.md))
+- `message` ([string](#string), a human readable explanation of the error code)
 
 ## Enums
 

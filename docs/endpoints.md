@@ -6,7 +6,7 @@ Some endpoints require credentials, in the form of a session ID and session toke
 
 ## Encryption
 
-Some endpoints require that the payload be encrypted. These endpoints will all use methods with bodies (here, just `POST` and `PATCH`). The server's public key is available at `/rsa_key`. Encryption should be done using the RSA algorithm with OAEP padding (MGF1 mask generation and SHA256 hashing). Encryption is required for endpoints marked with `[E]` below, and will not be understood on any other endpoints.
+Some endpoints require that the payload be encrypted. These endpoints will all use methods with bodies (here, just `POST` and `PATCH`). The server's public key is available at `/rsa_key`. Encryption should be done using the RSA algorithm with OAEP padding (MGF1 mask generation and SHA256 hashing). The encrypted bytes should then be encrypted with base 64 before being sent. Encryption is required for endpoints marked with `[E]` below, and will not be understood on any other endpoints.
 
 ## Pagination
 
@@ -23,6 +23,10 @@ For body-less endpoints (here, just `GET` and `DELETE`), parameters should be se
 ## Responses
 
 Responses will all be in JSON (with the exception of `/rsa_key`, not documented below). Return value names below refer to JSON fields. See [types](./types.md) for an explanation of the return value types.
+
+## Errors
+
+If there is an error in the request, the server will respond with an [Error object](./types.md#error) and a non-200 status code.
 
 ## Endpoints
 
@@ -60,26 +64,30 @@ Parameters:
 
 Resends a verification email to the logged in user.
 
-### `GET /accounts/verify_email`
+### `[A] GET /accounts/verify_email`
 
 Verifies the email account associated with the logged in user. `token` is a 6 character token that has been emailed to the user.
 
 Parameters:
 
-- `username` ([string](./types.md#string))
 - `token` ([string](./types.md#string))
 
 ### `[A][E] PATCH /accounts/me`
 
-Updates the logged in user's account.
+Updates the logged in user's password and/or email address.
 
 Parameters:
 
 - `password` ([optional](./types.md#optional-some-other-type) [string](./types.md#string), see `/accounts/create` for security requirements)
-- `avatar` ([optional](./types.md#optional-some-other-type) [bytes](./types.md#bytes))
 - `email` ([optional](./types.md#optional-some-other-type) [string](./types.md#string))
 
-The avatar, if present, must be a png, jpeg, gif or webp image no more than 1 MB in size (once decoded from base 64).
+### `[A] PATCH /accounts/avatar`
+
+Update the logged in user's avatar.
+
+- `avatar` ([bytes](./types.md#bytes))
+
+The avatar must be a png, jpeg, gif or webp image no more than 1 MB in size (once decoded from base 64).
 
 ### `[A] DELETE /accounts/me`
 

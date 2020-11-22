@@ -1,7 +1,6 @@
 """Run the server."""
-from .endpoints.helpers import app
-from .events import connections, games    # noqa: F401
-from .events.helpers import socketio
+from .endpoints import accounts, app, games, helpers, matchmaking    # noqa: F401,E501
+from .events import connections, games, notifications, socketio    # noqa: F401,F811,E501
 from .timing import timer_loop
 
 

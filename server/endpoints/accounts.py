@@ -14,7 +14,8 @@ import peewee
 import requests
 
 from . import helpers
-from .. import emails, enums, models
+from .. import enums, models, utils
+from ..utils import emails
 
 
 def _validate_username(username: str):
@@ -23,9 +24,9 @@ def _validate_username(username: str):
     This does not enforce uniqueness.
     """
     if not username:
-        raise helpers.RequestError(1112)
+        raise utils.RequestError(1112)
     elif len(username) > 32:
-        raise helpers.RequestError(1111)
+        raise utils.RequestError(1111)
 
 
 def _validate_password(password: str):
@@ -34,11 +35,11 @@ def _validate_password(password: str):
     Also checks against the haveibeenpwned.com database.
     """
     if len(password) < 10:
-        raise helpers.RequestError(1121)
+        raise utils.RequestError(1121)
     if len(password) > 32:
-        raise helpers.RequestError(1122)
+        raise utils.RequestError(1122)
     if len(set(password)) < 6:
-        raise helpers.RequestError(1123)
+        raise utils.RequestError(1123)
     sha1_hash = hashlib.sha1(password.encode()).hexdigest().upper()
     hash_range = sha1_hash[:5]
     resp = requests.get(
@@ -49,7 +50,7 @@ def _validate_password(password: str):
         if line:
             hash_suffix, count = line.split(':')
             if int(count) and hash_range + hash_suffix == sha1_hash:
-                raise helpers.RequestError(1124)
+                raise utils.RequestError(1124)
 
 
 def _validate_email(email: str):
@@ -60,13 +61,13 @@ def _validate_email(email: str):
     not very necessary though.
     """
     if len(email) > 255:
-        raise helpers.RequestError(1130)
+        raise utils.RequestError(1130)
     parts = email.split('@')
     if len(parts) < 2:
-        raise helpers.RequestError(1131)
+        raise utils.RequestError(1131)
     if len(parts) > 2:
         if not (parts[0].startswith('"') and parts[-2].endswith('"')):
-            raise helpers.RequestError(1131)
+            raise utils.RequestError(1131)
 
 
 @helpers.endpoint('/accounts/login', method='POST', encrypt_request=True)
@@ -74,7 +75,7 @@ def login(
         username: str, password: str, token: bytes) -> dict[str, int]:
     """Create a new authentication session."""
     if len(token) != 32:
-        raise helpers.RequestError(1308)
+        raise utils.RequestError(1308)
     session = models.User.login(username, password, token)
     return {'session_id': session.id}
 
@@ -96,12 +97,12 @@ def create_account(username: str, password: str, email: str):
             username=username, password=password, email=email
         )
     except peewee.IntegrityError as e:
-        type_, field = helpers.interpret_integrity_error(e)
+        type_, field = utils.interpret_integrity_error(e)
         if type_ == 'duplicate':
             if field == 'username':
-                raise helpers.RequestError(1113)
+                raise utils.RequestError(1113)
             elif field == 'email':
-                raise helpers.RequestError(1133)
+                raise utils.RequestError(1133)
         raise e
     send_verification_email(user=user)
     models.Notification.send(user, 'accounts.welcome')
@@ -111,7 +112,7 @@ def create_account(username: str, password: str, email: str):
 def send_verification_email(user: models.User):
     """Send a verification email to a user."""
     if user.email_verified:
-        raise helpers.RequestError(1201)
+        raise utils.RequestError(1201)
     message = (
         f'Here is the code to verify your email address: '
         f'{user.email_verify_token}.'
@@ -120,23 +121,18 @@ def send_verification_email(user: models.User):
 
 
 @helpers.endpoint('/accounts/verify_email', method='GET')
-def verify_email(username: str, token: str):
+def verify_email(user: models.User, token: str):
     """Verify an email address."""
-    try:
-        user = models.User.get(
-            models.User.username == username,
-            models.User.email_verify_token == token
-        )
-    except peewee.DoesNotExist:
-        raise helpers.RequestError(1202)
-    user.email_verified = True
-    user.save()
+    if user.email_verify_token == token:
+        user.email_verified = True
+        user.save()
+    else:
+        raise utils.RequestError(1202)
 
 
 @helpers.endpoint('/accounts/me', method='PATCH', encrypt_request=True)
 def update_account(
-        user: models.User, password: str = None, avatar: bytes = None,
-        email: str = None):
+        user: models.User, password: str = None, email: str = None):
     """Update a user's account."""
     if password:
         _validate_password(password)
@@ -144,18 +140,28 @@ def update_account(
     if email:
         _validate_email(email)
         user.email = email
-    if avatar:
-        user.avatar = avatar
     try:
         user.save()
     except peewee.IntegrityError as e:
-        type_, field = helpers.interpret_integrity_error(e)
+        type_, field = utils.interpret_integrity_error(e)
         if type_ == 'duplicate' and field == 'email':
-            raise helpers.RequestError(1133)
+            raise utils.RequestError(1133)
         raise e
     else:
         if email:
             send_verification_email(user=user)
+
+
+@helpers.endpoint('/accounts/me/avatar', method='PATCH')
+def update_avatar(user: models.User, avatar: bytes):
+    """Update a user's avatar.
+
+    This is separate from update_account because the avatar does not need to
+    be encrypted and in fact since it is a large amount of data, attempting to
+    encrypt it can cause problems.
+    """
+    user.avatar = avatar
+    user.save()
 
 
 @helpers.endpoint('/accounts/me', method='GET')
@@ -178,7 +184,7 @@ def get_account_by_id(id: int) -> dict[str, typing.Any]:
     try:
         account = models.User.get_by_id(id)
     except peewee.DoesNotExist:
-        raise helpers.RequestError(1001)
+        raise utils.RequestError(1001)
     return account.to_json()
 
 
@@ -236,10 +242,10 @@ def unread_notification_count(
         models.Notification.user == user,
         models.Notification.read == False    # noqa:E712
     ).count()
-    return {'count': count,}
+    return {'count': count}
 
 
-@helpers.endpoint('/accounts/notifications/ack/', method='POST')
+@helpers.endpoint('/accounts/notifications/ack', method='POST')
 def acknowledge_notification(
         user: models.User, notification: models.Notification):
     """Mark a notification as read."""
@@ -247,12 +253,14 @@ def acknowledge_notification(
     notification.save()
 
 
-@helpers.endpoint('/media/avatar/<avatar_name>', method='GET')
+@helpers.endpoint(
+    '/media/avatar/<avatar_name>', method='GET', return_type='image'
+)
 def get_avatar(avatar_name: str) -> bytes:
     """Get a user's avatar."""
     m = re.match(r'(\d+)-(\d+)\.(gif|jpeg|png|webp)$', avatar_name)
     if not m:
-        raise helpers.RequestError(5001)
+        raise utils.RequestError(5001)
     user_id, avatar_id, ext = m.groups()
     user_id = int(user_id)
     avatar_id = int(avatar_id)
@@ -262,5 +270,5 @@ def get_avatar(avatar_name: str) -> bytes:
         models.User.avatar_extension == ext
     )
     if not user:
-        raise helpers.RequestError(5001)
-    return user.avatar
+        raise utils.RequestError(5001)
+    return avatar_name, user.avatar

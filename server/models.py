@@ -16,8 +16,10 @@ import peewee as pw
 
 import playhouse.postgres_ext as pw_postgres
 
-from . import config, enums, events, gamemodes, hashing, images, timing
-from .endpoints import converters, helpers
+from . import (
+    config, database, enums, events, gamemodes, timing, utils
+)
+from .utils import hashing, images
 
 
 def generate_verification_token() -> str:
@@ -29,11 +31,6 @@ def generate_verification_token() -> str:
     return ''.join(
         random.choices(string.ascii_uppercase + string.digits, k=6)
     )
-
-
-db = pw_postgres.PostgresqlExtDatabase(
-    config.DB_NAME, user=config.DB_USER, password=config.DB_PASSWORD
-)
 
 
 class TurnCounter:
@@ -48,13 +45,9 @@ class TurnCounter:
         # _turn_number is internal, but this is the class that changes it
         return self.game._turn_number
 
-    def __str__(self) -> str:
-        """Get the turn number as a string."""
-        return str(self.game._turn_number)
-
     def __iadd__(self, value: int):
         """Increment the turn."""
-        if value != 1:
+        if value != 1:    # pragma: no cover
             raise ValueError(
                 'Cannot increment the turn counter by more than one.'
             )
@@ -114,58 +107,7 @@ class JsonField(pw.CharField):
         return super().db_value(json.dumps(instance))
 
 
-class BaseModel(pw.Model):
-    """A base model, that sets the DB."""
-
-    class Meta:
-        """Set the DB and use new table names."""
-
-        database = db
-        use_legacy_table_names = False
-
-    def __repr__(self, indent: int = 1) -> str:
-        """Represent the model as a string."""
-        values = {}
-        for field in type(self)._meta.sorted_field_names:
-            values[field] = getattr(self, field)
-        main = []
-        for field in values:
-            if isinstance(values[field], datetime.datetime):
-                value = f"'{values[field]}'"
-            elif isinstance(values[field], pw.Model):
-                value = values[field].__repr__(indent=indent + 1)
-            elif isinstance(values[field], enum.Enum):
-                value = values[field].name
-            else:
-                value = repr(values[field])
-            main.append(f'{field}={value}')
-        end_indent = '    ' * (indent - 1)
-        indent = '\n' + '    ' * indent
-        return (
-            f'<{type(self).__name__}{indent}'
-            + indent.join(main)
-            + f'\n{end_indent}>'
-        )
-
-    @classmethod
-    def converter(cls, value: typing.Union[int, str]) -> pw.Model:
-        """Convert a parameter to an instance of the model."""
-        field_name = getattr(cls.KasupelMeta, 'primary_parameter_key', 'id')
-        field = getattr(cls, field_name)
-        if isinstance(field, pw.AutoField):
-            base_converter = converters.int_converter
-        elif isinstance(field, pw.CharField):
-            base_converter = lambda x: x    # noqa: E731
-        else:
-            raise RuntimeError(f'Converter needed for field {field!r}.')
-        model_id = base_converter(value)
-        try:
-            return cls.get(field == model_id)
-        except cls.DoesNotExist:
-            raise helpers.RequestError(cls.KasupelMeta.not_found_error)
-
-
-class User(BaseModel):
+class User(database.BaseModel):
     """A model to represent a user."""
 
     username = pw.CharField(max_length=32, unique=True)
@@ -193,16 +135,16 @@ class User(BaseModel):
         try:
             user = cls.get(cls.username == username)
         except pw.DoesNotExist:
-            raise helpers.RequestError(1001)
+            raise utils.RequestError(1001)
         if user.password != password:
-            raise helpers.RequestError(1302)
+            raise utils.RequestError(1302)
         session = Session.create(user=user, token=token)
         return session
 
     @property
     def avatar(self) -> bytes:
         """Get the avatar as bytes."""
-        return bytes(self.avatar) if self.avatar else None
+        return bytes(self._avatar) if self._avatar else None
 
     @avatar.setter
     def avatar(self, new: bytes):
@@ -262,9 +204,11 @@ class User(BaseModel):
         """Get the ID of a socket the user is connected to, if any."""
         game = Game.get_or_none(
             (
-                Game.host == self & Game.host_socket_id != None    # noqa:E711
+                (Game.host == self)
+                & (Game.host_socket_id != None)    # noqa:E711
             ) | (
-                Game.away == self & Game.away_socket_id != None    # noqa:E711
+                (Game.away == self)
+                & (Game.away_socket_id != None)    # noqa:E711
             )
         )
         if not game:
@@ -276,11 +220,14 @@ class User(BaseModel):
     def to_json(
             self, hide_email: bool = True) -> dict[str, typing.Any]:
         """Get a dict representation of this user."""
+        avatar_url = (
+            f'/media/avatar/{self.avatar_name}' if self.avatar_name else None
+        )
         response = {
             'id': self.id,
             'username': self.username,
             'elo': self.elo,
-            'avatar_url': f'/media/avatar/{self.avatar_name}',
+            'avatar_url': avatar_url,
             'created_at': int(self.created_at.timestamp())
         }
         if not hide_email:
@@ -288,7 +235,7 @@ class User(BaseModel):
         return response
 
 
-class Session(BaseModel):
+class Session(database.BaseModel):
     """A model to represent an authentication session for a user."""
 
     MAX_AGE = datetime.timedelta(days=config.MAX_SESSION_AGE)
@@ -296,6 +243,31 @@ class Session(BaseModel):
     user = pw.ForeignKeyField(model=User, backref='sessions')
     token = pw.BlobField()
     created_at = pw.DateTimeField(default=datetime.datetime.now)
+
+    @classmethod
+    def validate_session_key(
+            cls, session_id: typing.Union[int, str],
+            session_token: str) -> typing.Optional[Session]:
+        """Get a session for a session ID and token."""
+        if isinstance(session_id, str):
+            try:
+                session_id = int(session_id)
+            except ValueError:
+                raise utils.RequestError(1309)
+        try:
+            session_token = base64.b64decode(session_token)
+        except ValueError:
+            raise utils.RequestError(3112)
+        try:
+            session = Session.get_by_id(session_id)
+        except pw.DoesNotExist:
+            raise utils.RequestError(1304)
+        if session_token != bytes(session.token):
+            raise utils.RequestError(1305)
+        if session.expired:
+            session.delete_instance()
+            raise utils.RequestError(1306)
+        return session
 
     @property
     def expired(self) -> bool:
@@ -308,7 +280,7 @@ class Session(BaseModel):
         return base64.b64encode(self.token).decode()
 
 
-class Game(BaseModel):
+class Game(database.BaseModel):
     """A model to represent a game.
 
     The game may be in any of the following states:
@@ -367,16 +339,15 @@ class Game(BaseModel):
         """Create a game."""
         super().__init__(*args, **kwargs)
         self.turn_number = TurnCounter(self)
-        self.host_time = self.main_thinking_time
-        self.away_time = self.main_thinking_time
         self.timer = timing.Timer(self)
 
     def start_game(self, away: User):
         """Start a game."""
         self.invited = None
         self.away = away
-        self.started_at = datetime.datetime.now()
-        self.last_turn = datetime.datetime.now()
+        self.started_at = self.last_turn = datetime.datetime.now()
+        self.host_time = self.main_thinking_time
+        self.away_time = self.main_thinking_time
         self.save()
 
     @functools.cached_property
@@ -387,7 +358,7 @@ class Game(BaseModel):
         initialisation as Peewee seems to set some properties after
         initialisation in some cases.
         """
-        return gamemodes.GAMEMODES[self.mode - 1](self)
+        return gamemodes.GAMEMODES[self.mode](self)
 
     def to_json(self) -> dict[str, typing.Any]:
         """Get a dict representation of this game."""
@@ -425,7 +396,7 @@ class Game(BaseModel):
         }
 
 
-class Notification(BaseModel):
+class Notification(database.BaseModel):
     """Represents a notification to be delivered to the user."""
 
     _notification_type_file = (
@@ -457,7 +428,7 @@ class Notification(BaseModel):
             return
         notif = cls.create(user=user, type_code=type_code, game=game)
         if user.socket_id:
-            events.send_notification(user.socket_id, notif)
+            events.notifications.send_notification(user.socket_id, notif)
 
     def display(self) -> str:
         """Get the notification as it should be displayed to the user."""
@@ -474,7 +445,7 @@ class Notification(BaseModel):
         """Represent as a python dict."""
         return {
             'id': self.id,
-            'sent_at': self.sent_at.to_timestamp(),
+            'sent_at': int(self.sent_at.timestamp()),
             'type_code': self.type_code,
             'game': self.game.to_json() if self.game else None,
             'message': self.display(),
@@ -482,7 +453,7 @@ class Notification(BaseModel):
         }
 
 
-class Piece(BaseModel):
+class Piece(database.BaseModel):
     """A model to represent a piece in a game."""
 
     piece_type = EnumField(enums.PieceType)
@@ -494,7 +465,7 @@ class Piece(BaseModel):
     game = pw.ForeignKeyField(model=Game, backref='pieces')
 
 
-class GameState(BaseModel):
+class GameState(database.BaseModel):
     """A model to represent a snapshot of a game.
 
     Theoretically, this could replace Piece, but we leave Piece for the
@@ -510,4 +481,7 @@ HostUser = User.alias()
 AwayUser = User.alias()
 InvitedUser = User.alias()
 
-db.create_tables([User, Session, Game, Piece, GameState])
+
+MODELS = [User, Session, Game, Piece, GameState, Notification]
+
+database.db.create_tables(MODELS)

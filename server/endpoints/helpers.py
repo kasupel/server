@@ -6,45 +6,15 @@ import functools
 import io
 import json
 import math
-import pathlib
-import re
 import traceback
 import typing
-
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
 
 import flask
 
 import peewee
 
-from . import converters
-from .. import config, models
-
-
-app = flask.Flask(__name__)
-
-
-errors_file = (
-    pathlib.Path(__file__).parent.parent.absolute() / 'res' / 'errors.json'
-)
-
-with open(errors_file) as f:
-    ERROR_CODES = json.load(f)
-
-
-class RequestError(Exception):
-    """A class for errors caused by a bad request."""
-
-    def __init__(self, code: int):
-        """Store the code and message to be handled."""
-        self.code = code
-        self.message = ERROR_CODES[str(code)]
-        self.as_dict = {
-            'error': code,
-            'message': self.message
-        }
-        super().__init__(self.message)
+from .. import database, endpoints, models, utils
+from ..utils import encryption
 
 
 def paginate(
@@ -57,84 +27,23 @@ def paginate(
     total_results = query.count()
     pages = math.ceil(total_results / per_page)
     if pages and page >= pages:
-        raise RequestError(3201)
+        raise utils.RequestError(3201)
     page = query.offset(page * per_page).limit(per_page)
     return page, pages
-
-
-def interpret_integrity_error(
-        error: peewee.IntegrityError) -> tuple[str, str]:
-    """Dissect an integrity error to see what went wrong.
-
-    It seems like a bad way to do it but according to peewee's author it's
-    the only way: https://stackoverflow.com/a/53597548.
-    """
-    match = re.search(
-        r'DETAIL:  Key \(([a-z_]+)\)=\((.+)\) already exists\.', str(error)
-    )
-    if match:
-        return 'duplicate', match.group(1)
-    else:
-        raise ValueError('Unknown integrity error.') from error
-
-
-def is_wrong_arguments(error: TypeError, fun: typing.Callable) -> bool:
-    """Check if a type error is due to incorrect arguments.
-
-    Only checks for keyword arguments for a specific function.
-    """
-    err = str(error).removeprefix(fun.__name__)    # Requires Python 3.9!
-    return bool(re.match(
-        r'\(\) (got an unexpected keyword|missing [0-9]+ required '
-        r'(positional|keyword-only)) arguments?',
-        err
-    ))
 
 
 def _decrypt_request(raw: bytes) -> dict[str, typing.Any]:
     """Decrypt a JSON object encrypted with our public key."""
     try:
-        raw_json = config.PRIVATE_KEY.decrypt(
-            raw,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
+        raw_json = encryption.decrypt_message(base64.b64decode(raw))
     except ValueError:
-        raise RequestError(3113)
+        raise utils.RequestError(3113)
     try:
         return json.loads(raw_json.decode())
     except json.JSONDecodeError:
-        raise RequestError(3113)
+        raise utils.RequestError(3113)
     except UnicodeDecodeError:
-        raise RequestError(3113)
-
-
-def validate_session_key(
-        session_id: typing.Union[int, str],
-        session_token: str) -> typing.Optional[models.Session]:
-    """Get a session for a session ID and token."""
-    if isinstance(session_id, str):
-        try:
-            session_id = int(session_id)
-        except ValueError:
-            raise RequestError(1309)
-    try:
-        session_token = base64.b64decode(session_token)
-    except ValueError:
-        raise RequestError(3112)
-    try:
-        session = models.Session.get_by_id(session_id)
-    except peewee.DoesNotExist:
-        raise RequestError(1304)
-    if session_token != bytes(session.token):
-        raise RequestError(1305)
-    if session.expired:
-        session.delete_instance()
-        raise RequestError(1306)
-    return session
+        raise utils.RequestError(3113)
 
 
 def _process_request(
@@ -150,7 +59,7 @@ def _process_request(
         else:
             data = request.get_json(force=True, silent=True)
         if not isinstance(data, dict):
-            raise RequestError(3113)
+            raise utils.RequestError(3113)
     session_id = None
     session_token = None
     if 'session_id' in data:
@@ -158,13 +67,15 @@ def _process_request(
     if 'session_token' in data:
         session_token = data.pop('session_token')
     if bool(session_id) ^ bool(session_token):
-        raise RequestError(1303)
+        raise utils.RequestError(1303)
     if session_id and session_token:
-        session = validate_session_key(session_id, session_token)
+        session = models.Session.validate_session_key(
+            session_id, session_token
+        )
         request.session = session
         user = session.user
         if require_verified_email and not user.email_verified:
-            raise RequestError(1307)
+            raise utils.RequestError(1307)
         data['user'] = user
     else:
         request.session = None
@@ -180,15 +91,19 @@ def endpoint(
     """Create a wrapper for an endpoint."""
     method = method.upper()
     if method not in ('GET', 'DELETE', 'POST', 'PATCH'):
+        # pragma: no cover
         raise RuntimeError(f'Unhandled method "{method}".')
     if encrypt_request and method not in ('POST', 'PATCH'):
+        # pragma: no cover
         raise RuntimeError('Cannot encrypt bodyless request.')
+    if url.endswith('/'):    # pragma: no cover
+        raise RuntimeError(f'Endpoint with trailing slash found ({url}).')
 
     def wrapper(main: typing.Callable) -> typing.Callable:
         """Wrap an endpoint."""
         if database_transaction:
-            main = models.db.atomic()(main)
-        converter_wrapped = converters.wrap(main)
+            main = database.db.atomic()(main)
+        converter_wrapped = utils.converters.wrap(main, user_arg_special=True)
 
         @functools.wraps(main)
         def return_wrapped(
@@ -201,7 +116,7 @@ def endpoint(
                 )
                 data.update(kwargs)
                 response = converter_wrapped(**data)
-            except RequestError as error:
+            except utils.RequestError as error:
                 response = error.as_dict
                 code = 400
             else:
@@ -217,13 +132,17 @@ def endpoint(
                     response, status=code, mimetype='text/plain'
                 )
             elif return_type == 'image':
+                filename, data = response
                 return flask.send_file(
-                    io.BytesIO(response), cache_timeout=31536000
+                    io.BytesIO(data), cache_timeout=31536000,
+                    attachment_filename=filename
                 )
-            else:
+            else:    # pragma: no cover
                 raise RuntimeError(f'Unkown return type {return_type}.')
 
-        flask_wrapped = app.route(url, methods=[method])(return_wrapped)
+        flask_wrapped = endpoints.app.route(url, methods=[method])(
+            return_wrapped
+        )
         return flask_wrapped
 
     return wrapper
@@ -234,18 +153,18 @@ def endpoint(
 )
 def get_public_key() -> str:
     """Get our public RSA key."""
-    return config.PUBLIC_KEY
+    return encryption.PUBLIC_KEY
 
 
-@app.errorhandler(404)
+@endpoints.app.errorhandler(404)
 def not_found(_error: typing.Any) -> flask.Response:
     """Handle an unkown URL being used."""
-    return flask.jsonify(RequestError(3301).as_dict), 404
+    return flask.jsonify(utils.RequestError(3301).as_dict), 404
 
 
-@app.errorhandler(500)
+@endpoints.app.errorhandler(500)
 def internal_error(error: Exception) -> flask.Response:
     """Handle an internal error."""
     traceback.print_tb(error.__traceback__)
     print(f'{type(error).__name__}: {error}')
-    return flask.jsonify(RequestError(4001).as_dict), 500
+    return flask.jsonify(utils.RequestError(4001).as_dict), 500
