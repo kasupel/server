@@ -440,7 +440,7 @@ class Notification(database.BaseModel):
         """Represent as a python dict."""
         return {
             'id': self.id,
-            'sent_at': self.sent_at.to_timestamp(),
+            'sent_at': int(self.sent_at.timestamp()),
             'type_code': self.type_code,
             'game': self.game.to_json() if self.game else None,
             'message': self.display(),
