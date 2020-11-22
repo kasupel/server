@@ -134,7 +134,7 @@ def endpoint(
             elif return_type == 'image':
                 filename, data = response
                 return flask.send_file(
-                    io.BytesIO(response), cache_timeout=31536000,
+                    io.BytesIO(data), cache_timeout=31536000,
                     attachment_filename=filename
                 )
             else:    # pragma: no cover
