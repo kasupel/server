@@ -1,7 +1,5 @@
 # HTTP Endpoints
 
-TODO: Document errors in a separate document.
-
 ## Authorisation
 
 Some endpoints require credentials, in the form of a session ID and session token (see [authorisation](./authorisation.md)). These should be passed through the `session_id` and `session_token` parameters. They are required on endpoints marked with `[A]` below, but will be accepted on any endpoints.
@@ -25,6 +23,10 @@ For body-less endpoints (here, just `GET` and `DELETE`), parameters should be se
 ## Responses
 
 Responses will all be in JSON (with the exception of `/rsa_key`, not documented below). Return value names below refer to JSON fields. See [types](./types.md) for an explanation of the return value types.
+
+## Errors
+
+If there is an error in the request, the server will respond with an [Error object](./types.md#error) and a non-200 status code.
 
 ## Endpoints
 
@@ -62,13 +64,12 @@ Parameters:
 
 Resends a verification email to the logged in user.
 
-### `GET /accounts/verify_email`
+### `[A] GET /accounts/verify_email`
 
 Verifies the email account associated with the logged in user. `token` is a 6 character token that has been emailed to the user.
 
 Parameters:
 
-- `username` ([string](./types.md#string))
 - `token` ([string](./types.md#string))
 
 ### `[A][E] PATCH /accounts/me`
@@ -116,6 +117,28 @@ Get a list of all users, sorted by descending ELO.
 Returns:
 
 - `users` ([list](./types.md#list-of-some-other-type) of [`User` objects](./types.md#user), without emails)
+
+### `[A][P] GET /accounts/notifications`
+
+Get a paginated list of the user's notifications.
+
+Returns:
+
+- `notifications` ([list](./types.md#list-of-some-other-type) of [`Notification` objects](./types.md#notification))
+
+### `[A] GET /accounts/notifications/unread_count`
+
+Check how many unread notifications the user has
+
+- `count` ([integer](./types.md#integer), the number of unread notifications the user has)
+
+### `[A] POST /accounts/notifications/ack`
+
+Mark a notification as read.
+
+Parameters:
+
+- `notification` ([integer](./types.md#integer), the ID of the notification)
 
 ### `[A][P] GET /games/invites`
 

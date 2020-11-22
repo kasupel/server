@@ -121,17 +121,13 @@ def send_verification_email(user: models.User):
 
 
 @helpers.endpoint('/accounts/verify_email', method='GET')
-def verify_email(username: str, token: str):
+def verify_email(user: models.User, token: str):
     """Verify an email address."""
-    try:
-        user = models.User.get(
-            models.User.username == username,
-            models.User.email_verify_token == token
-        )
-    except peewee.DoesNotExist:
+    if user.email_verify_token == token:
+        user.email_verified = True
+        user.save()
+    else:
         raise utils.RequestError(1202)
-    user.email_verified = True
-    user.save()
 
 
 @helpers.endpoint('/accounts/me', method='PATCH', encrypt_request=True)
@@ -227,6 +223,17 @@ def get_notifications(
         'unread_count': unread,
         'pages': pages
     }
+
+
+@helpers.endpoint('/accounts/notifications/unread_count', method='GET')
+def unread_notification_count(
+        user: models.User, page: int = 0) -> dict[str, typing.Any]:
+    """Check how many unread notifications the user has."""
+    count = models.Notification.select().where(
+        models.Notification.user == user,
+        models.Notification.read == False    # noqa:E712
+    ).count()
+    return {'count': count,}
 
 
 @helpers.endpoint('/accounts/notifications/ack/', method='POST')

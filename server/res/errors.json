@@ -17,7 +17,7 @@
         "1133": "Email address already used.",
     "1200": "Email verification error.",
         "1201": "Email already verified.",
-        "1202": "Username or verification token not found.",
+        "1202": "Incorrect verification token.",
     "1300": "Authentication failed.",
         "1301": "No credentials used.",
         "1302": "Incorrect password.",

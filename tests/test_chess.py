@@ -179,6 +179,7 @@ class TestChessBishops(ChessTest):
             ), expected_valid=False
         )
 
+
 class TestChessPawns(ChessTest):
     """Tests specific to pawn movement."""
 
