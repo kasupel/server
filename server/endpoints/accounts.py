@@ -253,7 +253,9 @@ def acknowledge_notification(
     notification.save()
 
 
-@helpers.endpoint('/media/avatar/<avatar_name>', method='GET')
+@helpers.endpoint(
+    '/media/avatar/<avatar_name>', method='GET', return_type='image'
+)
 def get_avatar(avatar_name: str) -> bytes:
     """Get a user's avatar."""
     m = re.match(r'(\d+)-(\d+)\.(gif|jpeg|png|webp)$', avatar_name)
