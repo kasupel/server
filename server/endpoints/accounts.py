@@ -271,4 +271,4 @@ def get_avatar(avatar_name: str) -> bytes:
     )
     if not user:
         raise utils.RequestError(5001)
-    return user.avatar
+    return avatar_name, user.avatar
