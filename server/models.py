@@ -204,9 +204,11 @@ class User(database.BaseModel):
         """Get the ID of a socket the user is connected to, if any."""
         game = Game.get_or_none(
             (
-                (Game.host == self) & (Game.host_socket_id != None)    # noqa:E711
+                (Game.host == self)
+                & (Game.host_socket_id != None)    # noqa:E711
             ) | (
-                (Game.away == self) & (Game.away_socket_id != None)    # noqa:E711
+                (Game.away == self)
+                & (Game.away_socket_id != None)    # noqa:E711
             )
         )
         if not game:

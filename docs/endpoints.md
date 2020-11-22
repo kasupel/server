@@ -74,15 +74,20 @@ Parameters:
 
 ### `[A][E] PATCH /accounts/me`
 
-Updates the logged in user's account.
+Updates the logged in user's password and/or email address.
 
 Parameters:
 
 - `password` ([optional](./types.md#optional-some-other-type) [string](./types.md#string), see `/accounts/create` for security requirements)
-- `avatar` ([optional](./types.md#optional-some-other-type) [bytes](./types.md#bytes))
 - `email` ([optional](./types.md#optional-some-other-type) [string](./types.md#string))
 
-The avatar, if present, must be a png, jpeg, gif or webp image no more than 1 MB in size (once decoded from base 64).
+### `[A] PATCH /accounts/avatar`
+
+Update the logged in user's avatar.
+
+- `avatar` ([bytes](./types.md#bytes))
+
+The avatar must be a png, jpeg, gif or webp image no more than 1 MB in size (once decoded from base 64).
 
 ### `[A] DELETE /accounts/me`
 

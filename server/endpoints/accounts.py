@@ -132,8 +132,7 @@ def verify_email(user: models.User, token: str):
 
 @helpers.endpoint('/accounts/me', method='PATCH', encrypt_request=True)
 def update_account(
-        user: models.User, password: str = None, avatar: bytes = None,
-        email: str = None):
+        user: models.User, password: str = None, email: str = None):
     """Update a user's account."""
     if password:
         _validate_password(password)
@@ -141,8 +140,6 @@ def update_account(
     if email:
         _validate_email(email)
         user.email = email
-    if avatar:
-        user.avatar = avatar
     try:
         user.save()
     except peewee.IntegrityError as e:
@@ -153,6 +150,18 @@ def update_account(
     else:
         if email:
             send_verification_email(user=user)
+
+
+@helpers.endpoint('/accounts/me/avatar', method='PATCH')
+def update_avatar(user: models.User, avatar: bytes):
+    """Update a user's avatar.
+
+    This is separate from update_account because the avatar does not need to
+    be encrypted and in fact since it is a large amount of data, attempting to
+    encrypt it can cause problems.
+    """
+    user.avatar = avatar
+    user.save()
 
 
 @helpers.endpoint('/accounts/me', method='GET')
@@ -233,7 +242,7 @@ def unread_notification_count(
         models.Notification.user == user,
         models.Notification.read == False    # noqa:E712
     ).count()
-    return {'count': count,}
+    return {'count': count}
 
 
 @helpers.endpoint('/accounts/notifications/ack', method='POST')
