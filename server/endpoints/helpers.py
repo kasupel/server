@@ -96,6 +96,8 @@ def endpoint(
     if encrypt_request and method not in ('POST', 'PATCH'):
         # pragma: no cover
         raise RuntimeError('Cannot encrypt bodyless request.')
+    if url.endswith('/'):    # pragma: no cover
+        raise RuntimeError(f'Endpoint with trailing slash found ({url}).')
 
     def wrapper(main: typing.Callable) -> typing.Callable:
         """Wrap an endpoint."""

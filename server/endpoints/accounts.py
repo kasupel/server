@@ -236,7 +236,7 @@ def unread_notification_count(
     return {'count': count,}
 
 
-@helpers.endpoint('/accounts/notifications/ack/', method='POST')
+@helpers.endpoint('/accounts/notifications/ack', method='POST')
 def acknowledge_notification(
         user: models.User, notification: models.Notification):
     """Mark a notification as read."""
