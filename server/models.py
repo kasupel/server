@@ -144,7 +144,7 @@ class User(database.BaseModel):
     @property
     def avatar(self) -> bytes:
         """Get the avatar as bytes."""
-        return bytes(self.avatar) if self.avatar else None
+        return bytes(self._avatar) if self._avatar else None
 
     @avatar.setter
     def avatar(self, new: bytes):
