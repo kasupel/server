@@ -240,7 +240,9 @@ class Session(database.BaseModel):
 
     MAX_AGE = datetime.timedelta(days=config.MAX_SESSION_AGE)
 
-    user = pw.ForeignKeyField(model=User, backref='sessions')
+    user = pw.ForeignKeyField(
+        model=User, backref='sessions', on_delete='CASCADE'
+    )
     token = pw.BlobField()
     created_at = pw.DateTimeField(default=datetime.datetime.now)
 
@@ -293,9 +295,15 @@ class Game(database.BaseModel):
           This game has ended - either there is a winner, or it was a draw.
     """
 
-    host = pw.ForeignKeyField(model=User, backref='host_games', null=True)
-    away = pw.ForeignKeyField(model=User, backref='away_games', null=True)
-    invited = pw.ForeignKeyField(model=User, backref='invites', null=True)
+    host = pw.ForeignKeyField(
+        model=User, backref='host_games', null=True, on_delete='SET NULL'
+    )
+    away = pw.ForeignKeyField(
+        model=User, backref='away_games', null=True, on_delete='SET NULL'
+    )
+    invited = pw.ForeignKeyField(
+        model=User, backref='invites', null=True
+    )
     current_turn = EnumField(enums.Side, default=enums.Side.HOST)
     _turn_number = pw.SmallIntegerField(default=1, column_name='turn_number')
     mode = EnumField(enums.Mode)
@@ -406,10 +414,12 @@ class Notification(database.BaseModel):
     with open(_notification_type_file) as f:
         NOTIFICATION_TYPES = json.load(f)
 
-    user = pw.ForeignKeyField(model=User, backref='notifications')
+    user = pw.ForeignKeyField(
+        model=User, backref='notifications', on_delete='CASCADE'
+    )
     sent_at = pw.DateTimeField(default=datetime.datetime.now)
     type_code = pw.CharField()
-    game = pw.ForeignKeyField(model=Game, null=True)
+    game = pw.ForeignKeyField(model=Game, null=True, on_delete='CASCADE')
     read = pw.BooleanField(default=False)
 
     class KasupelMeta:
@@ -462,7 +472,9 @@ class Piece(database.BaseModel):
     side = EnumField(enums.Side)
     has_moved = pw.BooleanField(default=False)
     first_move_last_turn = pw.BooleanField(default=False)    # For en passant
-    game = pw.ForeignKeyField(model=Game, backref='pieces')
+    game = pw.ForeignKeyField(
+        model=Game, backref='pieces', on_delete='CASCADE'
+    )
 
 
 class GameState(database.BaseModel):
@@ -472,7 +484,9 @@ class GameState(database.BaseModel):
     current turn for ease of use.
     """
 
-    game = pw.ForeignKeyField(model=Game, backref='pieces')
+    game = pw.ForeignKeyField(
+        model=Game, backref='history', on_delete='CASCADE'
+    )
     turn_number = pw.SmallIntegerField()
     arrangement = pw.CharField(max_length=128)
 
