@@ -115,7 +115,7 @@ Parameters:
 
 - `username` ([string](./types.md#string), in the URL path)
 
-### `[P] GET /accounts/accounts`
+### `[P] GET /accounts/all`
 
 Get a list of all users, sorted by descending ELO.
 
