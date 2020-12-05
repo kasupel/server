@@ -47,7 +47,7 @@ def _timedelta_converter(value: typing.Union[str, int]) -> datetime.timedelta:
     This should be passed as an integer representing seconds.
     """
     value = int_converter(value)
-    if value <= 0:
+    if value < 0:
         # Negative timedeltas are valid but we don't have a use for them in
         # this app.
         raise utils.RequestError(3117)
