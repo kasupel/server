@@ -11,20 +11,24 @@ def timer_check(current_time: datetime.datetime = None):
     """Check for games where the player on move has timed out."""
     current_time = current_time or datetime.datetime.now()
     timed_out_games = models.Game.select().where(
-        (
-            (models.Game.current_turn == enums.Side.HOST)
-            & ((
-                models.Game.last_turn
-                + models.Game.host_time
-                + models.Game.fixed_extra_time
-            ) < current_time)
-        ) | (
-            (models.Game.current_turn == enums.Side.AWAY)
-            & ((
-                models.Game.last_turn
-                + models.Game.away_time
-                + models.Game.fixed_extra_time
-            ) < current_time)
+        (models.Game.winner == enums.Winner.GAME_NOT_COMPLETE)
+        & (models.Game.last_turn != None)
+        & (
+          (
+              (models.Game.current_turn == enums.Side.HOST)
+              & ((
+                  models.Game.last_turn
+                  + models.Game.host_time
+                  + models.Game.fixed_extra_time
+              ) < current_time)
+          ) | (
+              (models.Game.current_turn == enums.Side.AWAY)
+              & ((
+                  models.Game.last_turn
+                  + models.Game.away_time
+                  + models.Game.fixed_extra_time
+              ) < current_time)
+          )
         )
     )
     for game in timed_out_games:
