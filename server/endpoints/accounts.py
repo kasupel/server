@@ -61,13 +61,13 @@ def _validate_email(email: str):
     not very necessary though.
     """
     if len(email) > 255:
-        raise utils.RequestError(1130)
+        raise utils.RequestError(1131)
     parts = email.split('@')
     if len(parts) < 2:
-        raise utils.RequestError(1131)
+        raise utils.RequestError(1132)
     if len(parts) > 2:
         if not (parts[0].startswith('"') and parts[-2].endswith('"')):
-            raise utils.RequestError(1131)
+            raise utils.RequestError(1132)
 
 
 @helpers.endpoint('/accounts/login', method='POST', encrypt_request=True)
