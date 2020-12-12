@@ -167,8 +167,7 @@ def update_avatar(user: models.User, avatar: bytes):
 @helpers.endpoint('/accounts/me', method='GET')
 def get_own_account(user: models.User) -> dict[str, typing.Any]:
     """Get the user's own account."""
-    data = user.to_json()
-    data['email'] = user.email
+    data = user.to_json(hide_email=False)
     return data
 
 
