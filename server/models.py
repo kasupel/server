@@ -232,6 +232,7 @@ class User(database.BaseModel):
         }
         if not hide_email:
             response['email'] = self.email
+            response['email_verified'] = self.email_verified
         return response
 
 
